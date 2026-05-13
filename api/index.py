@@ -254,6 +254,59 @@ def leaderboard():
     )
 
 
+# ----------------------------------------------------------------------
+# activity feed
+# ----------------------------------------------------------------------
+@app.route("/api/activity", methods=["GET"])
+def activity():
+    """Recent events across the network — paid completions, cancels,
+    spontaneous acts. Sorted newest first."""
+    g = _game()
+    users_by_id = {u.id: u for u in g.repo.list_users()}
+
+    def name(uid):
+        u = users_by_id.get(uid)
+        return u.display_name if u else f"#{uid}"
+
+    events = []
+    for tx in g.repo.list_transactions():
+        events.append({
+            "kind": "paid",
+            "at": tx.created_at.isoformat(),
+            "payer": name(tx.payer_id),
+            "payee": name(tx.payee_id),
+            "yen": tx.yen_amount,
+            "points": tx.point_amount,
+            "memo": tx.memo,
+        })
+    for act in g.repo.list_spontaneous():
+        events.append({
+            "kind": "spontaneous",
+            "at": act.created_at.isoformat(),
+            "giver": name(act.giver_id),
+            "receiver": name(act.receiver_id),
+            "favor": act.kind.value,
+            "giver_delta": act.giver_delta,
+            "receiver_delta": act.receiver_delta,
+            "note": act.note,
+        })
+    for req in g.repo.list_requests():
+        if req.status is RequestStatus.CANCELLED:
+            events.append({
+                "kind": "cancelled",
+                "at": (req.completed_at or req.accepted_at or req.created_at).isoformat(),
+                "requester": name(req.requester_id),
+                "favor": req.kind.value,
+                "yen": req.bounty_yen,
+            })
+    events.sort(key=lambda e: e["at"], reverse=True)
+    limit_arg = request.args.get("limit")
+    if limit_arg:
+        events = events[: int(limit_arg)]
+    return jsonify(events)
+
+
+
 # Vercel discovers the WSGI app via this module-level variable.
 # (Setting ``application`` as well covers the legacy Vercel runtime alias.)
 application = app
