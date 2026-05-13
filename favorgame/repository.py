@@ -16,6 +16,8 @@ from favorgame.errors import DuplicateError, NotFoundError
 from favorgame.models import (
     FavorRequest,
     Notification,
+    Reaction,
+    ReactionTarget,
     SpontaneousAct,
     Transaction,
     User,
@@ -40,12 +42,14 @@ class Repository:
         self._notifications: Dict[int, Notification] = {}
         self._spontaneous: Dict[int, SpontaneousAct] = {}
         self._transactions: Dict[int, Transaction] = {}
+        self._reactions: Dict[int, Reaction] = {}
         self._next_ids: Dict[str, int] = {
             "user": 1,
             "request": 1,
             "notification": 1,
             "spontaneous": 1,
             "transaction": 1,
+            "reaction": 1,
         }
         if self.path and self.path.exists():
             self.load()
@@ -171,6 +175,46 @@ class Repository:
         return list(self._transactions.values())
 
     # ------------------------------------------------------------------
+    # reactions
+    # ------------------------------------------------------------------
+    def upsert_reaction(self, reaction: Reaction) -> Reaction:
+        """Add or update — one row per (user, target, target_id). If a row
+        already exists for that triple, its glyph is overwritten in place.
+        """
+        for existing in self._reactions.values():
+            if (existing.user_id == reaction.user_id
+                    and existing.target is reaction.target
+                    and existing.target_id == reaction.target_id):
+                existing.glyph = reaction.glyph
+                existing.created_at = reaction.created_at
+                return existing
+        self._reactions[reaction.id] = reaction
+        if reaction.id >= self._next_ids["reaction"]:
+            self._next_ids["reaction"] = reaction.id + 1
+        return reaction
+
+    def list_reactions(
+        self,
+        *,
+        target: Optional[ReactionTarget] = None,
+        target_id: Optional[int] = None,
+    ) -> List[Reaction]:
+        items: Iterable[Reaction] = self._reactions.values()
+        if target is not None:
+            items = (r for r in items if r.target is target)
+        if target_id is not None:
+            items = (r for r in items if r.target_id == target_id)
+        return list(items)
+
+    def remove_reaction(self, *, user_id: int, target: ReactionTarget, target_id: int) -> bool:
+        """Remove a reaction by user+target. Returns True if anything was removed."""
+        for rid, r in list(self._reactions.items()):
+            if r.user_id == user_id and r.target is target and r.target_id == target_id:
+                del self._reactions[rid]
+                return True
+        return False
+
+    # ------------------------------------------------------------------
     # persistence
     # ------------------------------------------------------------------
     def to_dict(self) -> dict:
@@ -182,6 +226,7 @@ class Repository:
             "notifications": [n.to_dict() for n in self._notifications.values()],
             "spontaneous": [a.to_dict() for a in self._spontaneous.values()],
             "transactions": [t.to_dict() for t in self._transactions.values()],
+            "reactions": [r.to_dict() for r in self._reactions.values()],
         }
 
     def save(self) -> None:
@@ -235,3 +280,8 @@ class Repository:
         for t in data.get("transactions", []):
             tx = Transaction.from_dict(t)
             self._transactions[tx.id] = tx
+        for r in data.get("reactions", []):
+            rx = Reaction.from_dict(r)
+            self._reactions[rx.id] = rx
+        if "reaction" not in self._next_ids:
+            self._next_ids["reaction"] = max([rx.id for rx in self._reactions.values()] + [0]) + 1

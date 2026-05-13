@@ -319,7 +319,7 @@ class TestSeed:
         assert "山田アリス" in names
 
         users = _json(client.get("/api/users"))
-        assert len(users) == 3
+        assert len(users) == 5
 
     def test_seed_refuses_overwrite_without_force(self, client):
         client.post("/api/seed")
@@ -330,9 +330,124 @@ class TestSeed:
         client.post("/api/seed")
         resp = client.post("/api/seed?force=true")
         assert resp.status_code == 201
-        # State is consistent: 3 users, alice's wallet_yen reflects spent funds.
         users = _json(client.get("/api/users"))
-        assert len(users) == 3
+        assert len(users) == 5
+
+
+# ----------------------------------------------------------------------
+# quests, streak, multipliers, locations
+# ----------------------------------------------------------------------
+class TestQuestsApi:
+    def test_quests_returns_three_items(self, client):
+        client.post("/api/users", json={"username": "alice"})
+        quests = _json(client.get("/api/quests/alice"))
+        assert len(quests) == 3
+        ids = {q["quest"]["id"] for q in quests}
+        assert ids == {"variety_3", "helped_2", "closed_1"}
+        # All initially incomplete.
+        assert all(not q["completed"] for q in quests)
+
+
+class TestStreakApi:
+    def test_initial_streak_is_zero(self, client):
+        client.post("/api/users", json={"username": "alice"})
+        streak = _json(client.get("/api/streak/alice"))
+        assert streak["current"] == 0
+        assert streak["longest"] == 0
+        assert streak["last_active"] is None
+
+
+class TestMultipliersApi:
+    def test_returns_list(self, client):
+        # Default test fixture disables SCHEDULE, so this should be empty.
+        data = _json(client.get("/api/multipliers"))
+        assert isinstance(data, list)
+
+
+class TestLocationsApi:
+    def test_locations_returns_taxonomy(self, client):
+        locs = _json(client.get("/api/locations"))
+        keys = {l["key"] for l in locs}
+        assert "shinjuku" in keys
+        assert "shibuya" in keys
+
+    def test_update_location_endpoint(self, client):
+        client.post("/api/users", json={"username": "alice"})
+        resp = client.post(
+            "/api/users/alice/location", json={"location": "shinjuku"}
+        )
+        assert resp.status_code == 200
+        assert _json(resp)["location"] == "shinjuku"
+
+    def test_update_unknown_location_rejected(self, client):
+        client.post("/api/users", json={"username": "alice"})
+        resp = client.post(
+            "/api/users/alice/location", json={"location": "moon"}
+        )
+        assert resp.status_code == 400
+
+
+# ----------------------------------------------------------------------
+# reactions
+# ----------------------------------------------------------------------
+class TestReactionsApi:
+    @pytest.fixture
+    def with_event(self, client):
+        for n in ("alice", "bob"):
+            client.post("/api/users", json={"username": n, "starting_yen": 500})
+        client.post(
+            "/api/spontaneous",
+            json={"giver": "alice", "receiver": "bob", "kind": "seat"},
+        )
+        return client
+
+    def test_add_reaction(self, with_event):
+        resp = with_event.post(
+            "/api/reactions",
+            json={"user": "alice", "target": "spontaneous", "target_id": 1, "glyph": "heart"},
+        )
+        assert resp.status_code == 201
+        assert _json(resp)["glyph"] == "heart"
+
+    def test_unknown_glyph_rejected(self, with_event):
+        resp = with_event.post(
+            "/api/reactions",
+            json={"user": "alice", "target": "spontaneous", "target_id": 1, "glyph": "laser"},
+        )
+        assert resp.status_code == 400
+
+    def test_reactions_show_in_activity(self, with_event):
+        with_event.post(
+            "/api/reactions",
+            json={"user": "bob", "target": "spontaneous", "target_id": 1, "glyph": "clap"},
+        )
+        events = _json(with_event.get("/api/activity"))
+        spontaneous_events = [e for e in events if e["kind"] == "spontaneous"]
+        assert spontaneous_events
+        assert spontaneous_events[0]["reactions"] == {"clap": 1}
+
+    def test_remove_reaction(self, with_event):
+        with_event.post(
+            "/api/reactions",
+            json={"user": "alice", "target": "spontaneous", "target_id": 1, "glyph": "heart"},
+        )
+        resp = with_event.delete(
+            "/api/reactions",
+            json={"user": "alice", "target": "spontaneous", "target_id": 1},
+        )
+        assert resp.status_code == 200
+        assert _json(resp)["removed"] is True
+
+
+class TestProfileExpansion:
+    def test_profile_includes_quests_and_streak(self, client):
+        client.post("/api/users", json={"username": "alice", "location": "shinjuku"})
+        prof = _json(client.get("/api/profile/alice"))
+        assert "quests" in prof
+        assert len(prof["quests"]) == 3
+        assert "streak" in prof
+        assert "current" in prof["streak"]
+        assert prof["location"]["key"] == "shinjuku"
 
 
 # ----------------------------------------------------------------------

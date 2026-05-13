@@ -133,7 +133,7 @@ ACHIEVEMENTS: List[Achievement] = [
     Achievement("rescuer_10",     "救助の友",     "金銭付き依頼を10件完了した",  "lifebuoy",  target=10),
     Achievement("benefactor_5k",  "大金主",       "完了依頼で累計5000円支払った","wallet",    target=5000),
     Achievement("three_kinds",    "三方良し",     "席・荷物・トイレを自発で1回ずつ","handshake", target=3),
-    Achievement("all_kinds",      "万事屋",       "自発で5種類すべてを経験した",  "sparkles",  target=5),
+    Achievement("all_kinds",      "万事屋",       "自発で12種類すべてを経験した", "sparkles",  target=12),
     Achievement("tier_regular",   "常連入り",     "常連ティア (50pt) に到達した", "gem",       target=50),
 ]
 

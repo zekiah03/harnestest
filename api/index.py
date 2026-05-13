@@ -24,9 +24,15 @@ if str(_PROJECT_ROOT) not in sys.path:
 
 from favorgame.errors import FavorGameError  # noqa: E402
 from favorgame.game import Game  # noqa: E402
-from favorgame.models import FavorKind, RequestStatus  # noqa: E402
+from favorgame.models import (  # noqa: E402
+    FavorKind, REACTION_GLYPHS, ReactionTarget, RequestStatus,
+)
 from favorgame.tiers import status_for as tier_status_for  # noqa: E402
 from favorgame.achievements import evaluate_for as evaluate_achievements  # noqa: E402
+from favorgame.locations import LOCATIONS, get as get_location  # noqa: E402
+from favorgame.multipliers import active_multipliers  # noqa: E402
+from favorgame.quests import evaluate_for as evaluate_quests  # noqa: E402
+from favorgame.streaks import streak_for  # noqa: E402
 
 
 STATE_PATH = Path(os.environ.get("FAVORGAME_STATE", "/tmp/favorgame.json"))
@@ -62,9 +68,11 @@ def root():
     return jsonify(
         {
             "name": "favorgame",
+            "version": "0.2.0",
             "endpoints": [
                 "GET  /api/users",
-                "POST /api/users           {username, display_name?, starting_yen?}",
+                "POST /api/users           {username, display_name?, starting_yen?, location?}",
+                "POST /api/users/<u>/location  {location}",
                 "POST /api/topup           {username, yen}",
                 "GET  /api/requests?status=open",
                 "POST /api/requests        {requester, kind, bounty_yen, description?}",
@@ -78,11 +86,18 @@ def root():
                 "GET  /api/activity?limit=N",
                 "GET  /api/tier/<username>",
                 "GET  /api/achievements/<username>",
-                "GET  /api/profile/<username>     # user + tier + badges + history",
-                "POST /api/seed?force=true        # demo data",
+                "GET  /api/profile/<username>",
+                "GET  /api/quests/<username>",
+                "GET  /api/streak/<username>",
+                "GET  /api/multipliers",
+                "GET  /api/locations",
+                "POST /api/reactions       {user, target, target_id, glyph}",
+                "DELETE /api/reactions     {user, target, target_id}",
+                "POST /api/seed?force=true",
             ],
             "kinds": [k.value for k in FavorKind],
             "statuses": [s.value for s in RequestStatus],
+            "reaction_glyphs": list(REACTION_GLYPHS),
         }
     )
 
@@ -107,9 +122,21 @@ def register_user():
         username,
         display_name=body.get("display_name", ""),
         starting_yen=int(body.get("starting_yen", 0)),
+        location=body.get("location", ""),
     )
     g.save()
     return jsonify(user.to_dict()), 201
+
+
+@app.route("/api/users/<username>/location", methods=["POST"])
+def update_location(username: str):
+    body = request.get_json(silent=True) or {}
+    if "location" not in body:
+        return _err("location is required")
+    g = _game()
+    user = g.set_location(username, body["location"])
+    g.save()
+    return jsonify(user.to_dict())
 
 
 @app.route("/api/topup", methods=["POST"])
@@ -293,6 +320,8 @@ def profile(username: str):
     ]
     locked = [a.to_dict() for a in achievements if a.progress == 0 and not a.earned]
     rank = g.ranking.rank_of(user.id)
+    quests = [q.to_dict() for q in evaluate_quests(user, g.repo)]
+    streak = streak_for(user, g.repo).to_dict()
     return jsonify({
         "user": user.to_dict(),
         "tier": tier.to_dict(),
@@ -304,7 +333,77 @@ def profile(username: str):
             "total": len(achievements),
             "earned_count": len(earned),
         },
+        "quests": quests,
+        "streak": streak,
+        "location": get_location(user.location).to_dict() if user.location else None,
     })
+
+
+@app.route("/api/quests/<username>", methods=["GET"])
+def quests_for_user(username: str):
+    g = _game()
+    user = g.user(username)
+    return jsonify([q.to_dict() for q in evaluate_quests(user, g.repo)])
+
+
+@app.route("/api/streak/<username>", methods=["GET"])
+def streak_for_user(username: str):
+    g = _game()
+    user = g.user(username)
+    return jsonify(streak_for(user, g.repo).to_dict())
+
+
+@app.route("/api/multipliers", methods=["GET"])
+def multipliers():
+    """Currently-active reward multipliers across all kinds."""
+    active = active_multipliers()
+    return jsonify([
+        {
+            "kind": m.kind.value,
+            "factor": m.factor,
+            "reason": m.reason,
+        }
+        for m in active
+    ])
+
+
+@app.route("/api/locations", methods=["GET"])
+def locations():
+    return jsonify([loc.to_dict() for loc in LOCATIONS])
+
+
+# ---------------------------------------------------------------------- reactions
+@app.route("/api/reactions", methods=["POST"])
+def add_reaction():
+    body = request.get_json(silent=True) or {}
+    for field in ("user", "target", "target_id", "glyph"):
+        if field not in body:
+            return _err(f"{field} is required")
+    g = _game()
+    user = g.user(body["user"])
+    rx = g.reactions.react(
+        user_id=user.id,
+        target=body["target"],
+        target_id=int(body["target_id"]),
+        glyph=body["glyph"],
+    )
+    g.save()
+    return jsonify(rx.to_dict()), 201
+
+
+@app.route("/api/reactions", methods=["DELETE"])
+def remove_reaction():
+    body = request.get_json(silent=True) or {}
+    for field in ("user", "target", "target_id"):
+        if field not in body:
+            return _err(f"{field} is required")
+    g = _game()
+    user = g.user(body["user"])
+    removed = g.reactions.remove(
+        user_id=user.id, target=body["target"], target_id=int(body["target_id"]),
+    )
+    g.save()
+    return jsonify({"removed": removed})
 
 
 # ----------------------------------------------------------------------
@@ -326,40 +425,69 @@ def seed():
         STATE_PATH.unlink()
     g = _game()
 
-    # Three personas with hand-picked display names.
-    g.register("alice", display_name="山田アリス", starting_yen=2500)
-    g.register("bob",   display_name="田中タロウ", starting_yen=2000)
-    g.register("carol", display_name="鈴木ハナ",   starting_yen=1500)
+    # Three personas with hand-picked display names + locations.
+    g.register("alice", display_name="山田アリス", starting_yen=2500, location="shinjuku")
+    g.register("bob",   display_name="田中タロウ", starting_yen=2000, location="shinjuku")
+    g.register("carol", display_name="鈴木ハナ",   starting_yen=1500, location="shibuya")
+    g.register("dave",  display_name="高橋ケン",   starting_yen=1800, location="shinjuku")
+    g.register("eve",   display_name="松本ユイ",   starting_yen=1200, location="")  # anywhere
 
-    # Spontaneous history — Alice has been generous, Bob middling,
-    # Carol mostly receives.
-    g.report_spontaneous(giver="alice", receiver="bob",   kind=FavorKind.SEAT,    note="JR 山手線")
-    g.report_spontaneous(giver="alice", receiver="bob",   kind=FavorKind.SEAT,    note="バス")
-    g.report_spontaneous(giver="alice", receiver="carol", kind=FavorKind.LUGGAGE, note="駅階段で")
-    g.report_spontaneous(giver="alice", receiver="carol", kind=FavorKind.CHILD_WATCH, note="カフェで5分")
+    # Spontaneous history — exercises a variety of kinds so the activity
+    # feed and achievements feel populated.
+    g.report_spontaneous(giver="alice", receiver="bob",   kind=FavorKind.SEAT,         note="JR 山手線")
+    g.report_spontaneous(giver="alice", receiver="bob",   kind=FavorKind.SEAT,         note="バス")
+    g.report_spontaneous(giver="alice", receiver="carol", kind=FavorKind.LUGGAGE,      note="駅階段で")
+    g.report_spontaneous(giver="alice", receiver="carol", kind=FavorKind.CHILD_WATCH,  note="カフェで5分")
     g.report_spontaneous(giver="bob",   receiver="carol", kind=FavorKind.TOILET_ORDER)
-    g.report_spontaneous(giver="bob",   receiver="alice", kind=FavorKind.LUGGAGE, note="お返し")
+    g.report_spontaneous(giver="bob",   receiver="alice", kind=FavorKind.LUGGAGE,      note="お返し")
+    g.report_spontaneous(giver="dave",  receiver="eve",   kind=FavorKind.DIRECTIONS,   note="新宿西口で")
+    g.report_spontaneous(giver="dave",  receiver="alice", kind=FavorKind.PHOTO,        note="集合写真")
+    g.report_spontaneous(giver="eve",   receiver="bob",   kind=FavorKind.UMBRELLA,     note="夕立")
+    g.report_spontaneous(giver="bob",   receiver="dave",  kind=FavorKind.CHARGER)
+    g.report_spontaneous(giver="alice", receiver="eve",   kind=FavorKind.TRANSLATE,    note="観光客の質問")
+    g.report_spontaneous(giver="carol", receiver="dave",  kind=FavorKind.REACH,        note="棚の本")
 
-    # A completed paid request: Carol asked Bob to swap toilet order.
+    # A completed paid request: Alice asks Bob to swap toilet order
+    # (both at shinjuku, so the notification fans correctly).
     req_done = g.request_favor(
-        requester="carol", kind=FavorKind.TOILET_ORDER, bounty_yen=100,
+        requester="alice", kind=FavorKind.TOILET_ORDER, bounty_yen=100,
     )
     g.accept_favor(accepter="bob", request_id=req_done.id)
-    g.complete_favor(requester="carol", request_id=req_done.id)
+    g.complete_favor(requester="alice", request_id=req_done.id)
 
-    # An accepted-but-not-yet-completed request: Alice asked Bob to watch
-    # her child briefly. Shows up in the active feed.
+    # An accepted-but-not-yet-completed request: Dave asks Bob to watch
+    # his child briefly. Shows up in the active feed.
     req_inflight = g.request_favor(
-        requester="alice", kind=FavorKind.CHILD_WATCH, bounty_yen=300,
+        requester="dave", kind=FavorKind.CHILD_WATCH, bounty_yen=300,
         description="駅で5分だけ見ててほしい",
     )
     g.accept_favor(accepter="bob", request_id=req_inflight.id)
 
-    # An open request waiting on someone: Carol asks for a seat with cash.
+    # An open request waiting on someone: Carol (shibuya) asks for a
+    # seat. Fans only to Eve (ANYWHERE) — demonstrates location filter.
     g.request_favor(
         requester="carol", kind=FavorKind.SEAT, bounty_yen=200,
         description="新幹線で作業したいので",
     )
+
+    # Another open one in shinjuku to give Bob/Dave something live in
+    # their inbox.
+    g.request_favor(
+        requester="alice", kind=FavorKind.LUGGAGE, bounty_yen=150,
+        description="スーツケース重い",
+    )
+
+    # A few reactions so the activity feed shows them.
+    acts = g.repo.list_spontaneous()
+    if acts:
+        g.reactions.react(
+            user_id=g.user("carol").id, target="spontaneous",
+            target_id=acts[0].id, glyph="heart",
+        )
+        g.reactions.react(
+            user_id=g.user("eve").id, target="spontaneous",
+            target_id=acts[0].id, glyph="clap",
+        )
 
     g.save()
     return jsonify({
@@ -388,28 +516,35 @@ def activity():
         events.append({
             "kind": "paid",
             "at": tx.created_at.isoformat(),
+            "ref": {"target": "transaction", "id": tx.id},
             "payer": name(tx.payer_id),
             "payee": name(tx.payee_id),
             "yen": tx.yen_amount,
             "points": tx.point_amount,
             "memo": tx.memo,
+            "reactions": g.reactions.summary_for(target="transaction", target_id=tx.id),
         })
     for act in g.repo.list_spontaneous():
         events.append({
             "kind": "spontaneous",
             "at": act.created_at.isoformat(),
+            "ref": {"target": "spontaneous", "id": act.id},
             "giver": name(act.giver_id),
             "receiver": name(act.receiver_id),
             "favor": act.kind.value,
             "giver_delta": act.giver_delta,
             "receiver_delta": act.receiver_delta,
             "note": act.note,
+            "multiplier": act.multiplier,
+            "multiplier_reason": act.multiplier_reason,
+            "reactions": g.reactions.summary_for(target="spontaneous", target_id=act.id),
         })
     for req in g.repo.list_requests():
         if req.status is RequestStatus.CANCELLED:
             events.append({
                 "kind": "cancelled",
                 "at": (req.completed_at or req.accepted_at or req.created_at).isoformat(),
+                "ref": None,
                 "requester": name(req.requester_id),
                 "favor": req.kind.value,
                 "yen": req.bounty_yen,

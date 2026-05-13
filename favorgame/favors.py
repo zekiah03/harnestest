@@ -73,6 +73,7 @@ class FavorService:
             kind=FavorKind.parse(kind),
             bounty_yen=bounty_yen,
             description=description,
+            location=requester.location,
         )
         self.repo.add_request(request)
         # Escrow: yen leaves wallet now.

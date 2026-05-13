@@ -24,11 +24,20 @@ class SpontaneousReward:
 # but still penalises being the type of person who routinely *receives* favors
 # without reciprocating.
 _SPONTANEOUS_REWARDS: dict[FavorKind, SpontaneousReward] = {
-    FavorKind.SEAT: SpontaneousReward(giver_delta=5, receiver_delta=-2),
-    FavorKind.LUGGAGE: SpontaneousReward(giver_delta=8, receiver_delta=-3),
-    FavorKind.TOILET_ORDER: SpontaneousReward(giver_delta=3, receiver_delta=-1),
-    FavorKind.CHILD_WATCH: SpontaneousReward(giver_delta=15, receiver_delta=-5),
-    FavorKind.GENERIC: SpontaneousReward(giver_delta=2, receiver_delta=-1),
+    # Core five — keep original calibration.
+    FavorKind.SEAT:         SpontaneousReward(giver_delta=5,  receiver_delta=-2),
+    FavorKind.LUGGAGE:      SpontaneousReward(giver_delta=8,  receiver_delta=-3),
+    FavorKind.TOILET_ORDER: SpontaneousReward(giver_delta=3,  receiver_delta=-1),
+    FavorKind.CHILD_WATCH:  SpontaneousReward(giver_delta=15, receiver_delta=-5),
+    FavorKind.GENERIC:      SpontaneousReward(giver_delta=2,  receiver_delta=-1),
+    # Expansion set — tuned so effort/awkwardness roughly maps to points.
+    FavorKind.DIRECTIONS:   SpontaneousReward(giver_delta=3,  receiver_delta=-1),
+    FavorKind.PHOTO:        SpontaneousReward(giver_delta=2,  receiver_delta=-1),
+    FavorKind.UMBRELLA:     SpontaneousReward(giver_delta=4,  receiver_delta=-2),
+    FavorKind.CHARGER:      SpontaneousReward(giver_delta=3,  receiver_delta=-1),
+    FavorKind.TRANSLATE:    SpontaneousReward(giver_delta=6,  receiver_delta=-2),
+    FavorKind.PET_WATCH:    SpontaneousReward(giver_delta=10, receiver_delta=-3),
+    FavorKind.REACH:        SpontaneousReward(giver_delta=2,  receiver_delta=-1),
 }
 
 

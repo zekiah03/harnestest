@@ -11,6 +11,9 @@ from favorgame.models import (
     FavorRequest,
     Notification,
     NotificationResponse,
+    REACTION_GLYPHS,
+    Reaction,
+    ReactionTarget,
     RequestStatus,
     SpontaneousAct,
     Transaction,
@@ -23,6 +26,9 @@ __all__ = [
     "FavorRequest",
     "Notification",
     "NotificationResponse",
+    "REACTION_GLYPHS",
+    "Reaction",
+    "ReactionTarget",
     "Repository",
     "RequestStatus",
     "SpontaneousAct",
@@ -30,4 +36,4 @@ __all__ = [
     "User",
 ]
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"

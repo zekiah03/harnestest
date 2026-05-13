@@ -28,13 +28,27 @@ def _parse_iso(value: str) -> datetime:
 
 
 class FavorKind(str, Enum):
-    """A taxonomy of paid favors and spontaneous acts."""
+    """A taxonomy of paid favors and spontaneous acts.
 
-    SEAT = "seat"             # 席を譲る / 譲ってほしい
-    LUGGAGE = "luggage"       # 荷物を持つ / 持ってほしい
-    TOILET_ORDER = "toilet"   # トイレの順番を譲る / 譲ってほしい
-    CHILD_WATCH = "child"     # 一時的に子供を見てほしい
-    GENERIC = "generic"       # その他
+    Each value corresponds to a real-world micro-favor that registered
+    users can perform for each other. Order is preserved for the UI
+    dropdowns: existing core kinds first, expansion set after.
+    """
+
+    # Core 5 — original launch set.
+    SEAT = "seat"                 # 席を譲る
+    LUGGAGE = "luggage"           # 荷物を持つ
+    TOILET_ORDER = "toilet"       # トイレの順番を譲る
+    CHILD_WATCH = "child"         # 一時的に子供を見守る
+    GENERIC = "generic"           # その他 (description 必須)
+    # Expansion set — broader range of everyday kindnesses.
+    DIRECTIONS = "directions"     # 道案内をする
+    PHOTO = "photo"               # 集合写真を撮ってあげる
+    UMBRELLA = "umbrella"         # 傘を貸す / シェアする
+    CHARGER = "charger"           # 充電を貸す
+    TRANSLATE = "translate"       # 通訳/翻訳をする
+    PET_WATCH = "pet"             # ペットを少し見守る
+    REACH = "reach"               # 高い棚から取る / 落ちた物を拾う
 
     @classmethod
     def parse(cls, value: Any) -> "FavorKind":
@@ -103,6 +117,7 @@ class User:
     display_name: str = ""
     wallet_yen: int = 0
     points: int = 0
+    location: str = ""              # Location.key or ANYWHERE
     created_at: datetime = field(default_factory=utcnow)
 
     def __post_init__(self) -> None:
@@ -126,6 +141,7 @@ class User:
             display_name=data.get("display_name", ""),
             wallet_yen=int(data.get("wallet_yen", 0)),
             points=int(data.get("points", 0)),
+            location=data.get("location", ""),
             created_at=_parse_iso(data["created_at"]),
         )
 
@@ -146,6 +162,7 @@ class FavorRequest:
     description: str = ""
     status: RequestStatus = RequestStatus.OPEN
     accepter_id: Optional[int] = None
+    location: str = ""              # snapshot of requester.location at create
     created_at: datetime = field(default_factory=utcnow)
     accepted_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
@@ -174,6 +191,7 @@ class FavorRequest:
             "description": self.description,
             "status": self.status.value,
             "accepter_id": self.accepter_id,
+            "location": self.location,
             "created_at": _iso(self.created_at),
             "accepted_at": _iso(self.accepted_at) if self.accepted_at else None,
             "completed_at": _iso(self.completed_at) if self.completed_at else None,
@@ -189,6 +207,7 @@ class FavorRequest:
             description=data.get("description", ""),
             status=RequestStatus.parse(data.get("status", RequestStatus.OPEN.value)),
             accepter_id=data.get("accepter_id"),
+            location=data.get("location", ""),
             created_at=_parse_iso(data["created_at"]),
             accepted_at=_parse_iso(data["accepted_at"]) if data.get("accepted_at") else None,
             completed_at=_parse_iso(data["completed_at"]) if data.get("completed_at") else None,
@@ -250,7 +269,9 @@ class SpontaneousAct:
 
     Per the spec the *giver* gains points and the *receiver* loses points —
     this models the "if you let someone give up their seat for you, your
-    score goes down" reciprocity rule.
+    score goes down" reciprocity rule. A time-of-day multiplier may also
+    inflate the giver gain — when that happens ``multiplier`` is > 1.0
+    and ``multiplier_reason`` carries a short label for the UI.
     """
 
     id: int
@@ -260,6 +281,8 @@ class SpontaneousAct:
     note: str = ""
     giver_delta: int = 0
     receiver_delta: int = 0
+    multiplier: float = 1.0
+    multiplier_reason: str = ""
     created_at: datetime = field(default_factory=utcnow)
 
     def __post_init__(self) -> None:
@@ -276,6 +299,8 @@ class SpontaneousAct:
             "note": self.note,
             "giver_delta": self.giver_delta,
             "receiver_delta": self.receiver_delta,
+            "multiplier": self.multiplier,
+            "multiplier_reason": self.multiplier_reason,
             "created_at": _iso(self.created_at),
         }
 
@@ -289,6 +314,68 @@ class SpontaneousAct:
             note=data.get("note", ""),
             giver_delta=int(data.get("giver_delta", 0)),
             receiver_delta=int(data.get("receiver_delta", 0)),
+            multiplier=float(data.get("multiplier", 1.0)),
+            multiplier_reason=data.get("multiplier_reason", ""),
+            created_at=_parse_iso(data["created_at"]),
+        )
+
+
+class ReactionTarget(str, Enum):
+    """What kind of event a reaction is attached to."""
+
+    SPONTANEOUS = "spontaneous"   # a SpontaneousAct row
+    TRANSACTION = "transaction"   # a completed paid Transaction row
+
+    @classmethod
+    def parse(cls, value: Any) -> "ReactionTarget":
+        if isinstance(value, cls):
+            return value
+        try:
+            return cls(value)
+        except ValueError as exc:
+            raise ValidationError(f"unknown reaction target: {value!r}") from exc
+
+
+# Frozen list of allowed glyph keys. Frontend resolves to SVG symbols.
+REACTION_GLYPHS = ("heart", "thumb", "spark", "clap")
+
+
+@dataclass
+class Reaction:
+    """A user's reaction (heart/thumb/spark/clap) on an event row."""
+
+    id: int
+    target: ReactionTarget
+    target_id: int
+    user_id: int
+    glyph: str
+    created_at: datetime = field(default_factory=utcnow)
+
+    def __post_init__(self) -> None:
+        self.target = ReactionTarget.parse(self.target)
+        if self.glyph not in REACTION_GLYPHS:
+            raise ValidationError(
+                f"unknown glyph {self.glyph!r}; allowed: {REACTION_GLYPHS}"
+            )
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "target": self.target.value,
+            "target_id": self.target_id,
+            "user_id": self.user_id,
+            "glyph": self.glyph,
+            "created_at": _iso(self.created_at),
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "Reaction":
+        return cls(
+            id=int(data["id"]),
+            target=ReactionTarget.parse(data["target"]),
+            target_id=int(data["target_id"]),
+            user_id=int(data["user_id"]),
+            glyph=data["glyph"],
             created_at=_parse_iso(data["created_at"]),
         )
 

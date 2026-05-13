@@ -10,6 +10,25 @@ import pytest
 from favorgame.game import Game
 
 
+def pytest_configure(config):
+    config.addinivalue_line(
+        "markers",
+        "multipliers: enable the live time-of-day multiplier schedule for this test",
+    )
+
+
+@pytest.fixture(autouse=True)
+def _stable_clock(request, monkeypatch):
+    """Most tests should be insensitive to the wall clock — they assert on
+    base point math, not on the time-of-day bonus. We blank out the
+    multiplier schedule by default and let tests that *want* to exercise
+    it opt back in with ``@pytest.mark.multipliers``.
+    """
+    if "multipliers" in request.keywords:
+        return
+    monkeypatch.setattr("favorgame.multipliers.SCHEDULE", [])
+
+
 @pytest.fixture
 def state_path(tmp_path: Path) -> Path:
     return tmp_path / "state.json"

@@ -71,13 +71,25 @@ class TestEvaluateFor:
         assert three.earned
 
     def test_all_kinds_requires_every_kind(self, populated_game):
-        kinds = [FavorKind.SEAT, FavorKind.LUGGAGE, FavorKind.TOILET_ORDER, FavorKind.CHILD_WATCH, FavorKind.GENERIC]
+        # all_kinds now spans the full taxonomy (12 kinds).
+        kinds = list(FavorKind)
         for k in kinds:
             populated_game.report_spontaneous(giver="alice", receiver="bob", kind=k)
         statuses = evaluate_for(populated_game.user("alice"), populated_game.repo)
         ach = _status(statuses, "all_kinds")
-        assert ach.progress == 5
+        assert ach.progress == len(kinds)
         assert ach.earned
+
+    def test_all_kinds_partial_progress(self, populated_game):
+        # Doing just 5 distinct kinds should give 5/12 progress, not earned.
+        five = [FavorKind.SEAT, FavorKind.LUGGAGE, FavorKind.TOILET_ORDER,
+                FavorKind.CHILD_WATCH, FavorKind.GENERIC]
+        for k in five:
+            populated_game.report_spontaneous(giver="alice", receiver="bob", kind=k)
+        statuses = evaluate_for(populated_game.user("alice"), populated_game.repo)
+        ach = _status(statuses, "all_kinds")
+        assert ach.progress == 5
+        assert not ach.earned
 
     def test_first_paid_unlocks_with_one_request(self, populated_game):
         populated_game.request_favor(

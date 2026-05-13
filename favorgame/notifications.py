@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import List
 
 from favorgame.errors import StateError
+from favorgame.locations import reaches
 from favorgame.models import (
     FavorRequest,
     Notification,
@@ -25,7 +26,12 @@ class NotificationService:
         self.repo = repo
 
     def fan_out(self, request: FavorRequest) -> List[Notification]:
-        """Create one Notification per registered user except the requester."""
+        """Create one Notification per registered user the request reaches.
+
+        Filtering rule: a request posted at location L only notifies
+        users whose location is L or ANYWHERE; conversely, an unanchored
+        request notifies everyone. See ``favorgame.locations.reaches``.
+        """
         if request.status is not RequestStatus.OPEN:
             raise StateError(
                 f"can only fan out OPEN requests; got {request.status.value}"
@@ -33,6 +39,8 @@ class NotificationService:
         notifications: List[Notification] = []
         for user in self.repo.list_users():
             if user.id == request.requester_id:
+                continue
+            if not reaches(request.location, user.location):
                 continue
             note = Notification(
                 id=self.repo.next_id("notification"),

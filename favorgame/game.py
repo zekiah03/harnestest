@@ -15,6 +15,7 @@ from favorgame.ledger import Ledger
 from favorgame.models import FavorRequest, Notification, SpontaneousAct, User
 from favorgame.notifications import NotificationService
 from favorgame.ranking import RankEntry, RankingService
+from favorgame.reactions import ReactionService
 from favorgame.repository import Repository
 from favorgame.spontaneous import SpontaneousService
 
@@ -29,6 +30,7 @@ class Game:
         self.favors = FavorService(self.repo, self.ledger, self.notifications)
         self.spontaneous = SpontaneousService(self.repo)
         self.ranking = RankingService(self.repo)
+        self.reactions = ReactionService(self.repo)
 
     # ------------------------------------------------------------------
     # user management
@@ -39,6 +41,7 @@ class Game:
         *,
         display_name: str = "",
         starting_yen: int = 0,
+        location: str = "",
     ) -> User:
         try:
             existing = self.repo.get_user_by_username(username)
@@ -46,13 +49,30 @@ class Game:
             existing = None
         if existing is not None:
             raise DuplicateError(f"username {username!r} already taken")
+        from favorgame.errors import ValidationError
+        from favorgame.locations import is_valid
+
+        if not is_valid(location):
+            raise ValidationError(f"unknown location: {location!r}")
         user = User(
             id=self.repo.next_id("user"),
             username=username,
             display_name=display_name,
             wallet_yen=starting_yen,
+            location=location,
         )
         self.repo.add_user(user)
+        return user
+
+    def set_location(self, username: str, location: str) -> User:
+        """Update a registered user's current location in-place."""
+        from favorgame.errors import ValidationError
+        from favorgame.locations import is_valid
+
+        if not is_valid(location):
+            raise ValidationError(f"unknown location: {location!r}")
+        user = self.repo.get_user_by_username(username)
+        user.location = location
         return user
 
     def user(self, username: str) -> User:
