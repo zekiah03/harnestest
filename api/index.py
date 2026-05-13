@@ -25,6 +25,8 @@ if str(_PROJECT_ROOT) not in sys.path:
 from favorgame.errors import FavorGameError  # noqa: E402
 from favorgame.game import Game  # noqa: E402
 from favorgame.models import FavorKind, RequestStatus  # noqa: E402
+from favorgame.tiers import status_for as tier_status_for  # noqa: E402
+from favorgame.achievements import evaluate_for as evaluate_achievements  # noqa: E402
 
 
 STATE_PATH = Path(os.environ.get("FAVORGAME_STATE", "/tmp/favorgame.json"))
@@ -73,6 +75,11 @@ def root():
                 "GET  /api/inbox/<username>",
                 "POST /api/notifications/<id>/ignore {username}",
                 "GET  /api/leaderboard?limit=N",
+                "GET  /api/activity?limit=N",
+                "GET  /api/tier/<username>",
+                "GET  /api/achievements/<username>",
+                "GET  /api/profile/<username>     # user + tier + badges + history",
+                "POST /api/seed?force=true        # demo data",
             ],
             "kinds": [k.value for k in FavorKind],
             "statuses": [s.value for s in RequestStatus],
@@ -252,6 +259,114 @@ def leaderboard():
             for e in g.leaderboard(limit=limit)
         ]
     )
+
+
+# ----------------------------------------------------------------------
+# tier + achievements + profile
+# ----------------------------------------------------------------------
+@app.route("/api/tier/<username>", methods=["GET"])
+def tier_for_user(username: str):
+    g = _game()
+    user = g.user(username)
+    return jsonify(tier_status_for(user.points).to_dict())
+
+
+@app.route("/api/achievements/<username>", methods=["GET"])
+def achievements_for_user(username: str):
+    g = _game()
+    user = g.user(username)
+    return jsonify([s.to_dict() for s in evaluate_achievements(user, g.repo)])
+
+
+@app.route("/api/profile/<username>", methods=["GET"])
+def profile(username: str):
+    """One-shot endpoint feeding the user profile card on the frontend."""
+    g = _game()
+    user = g.user(username)
+    tier = tier_status_for(user.points)
+    achievements = evaluate_achievements(user, g.repo)
+    earned = [a.to_dict() for a in achievements if a.earned]
+    in_progress = [
+        a.to_dict()
+        for a in achievements
+        if not a.earned and a.progress > 0
+    ]
+    locked = [a.to_dict() for a in achievements if a.progress == 0 and not a.earned]
+    rank = g.ranking.rank_of(user.id)
+    return jsonify({
+        "user": user.to_dict(),
+        "tier": tier.to_dict(),
+        "rank": rank,
+        "achievements": {
+            "earned": earned,
+            "in_progress": in_progress,
+            "locked": locked,
+            "total": len(achievements),
+            "earned_count": len(earned),
+        },
+    })
+
+
+# ----------------------------------------------------------------------
+# seed (demo data)
+# ----------------------------------------------------------------------
+@app.route("/api/seed", methods=["POST"])
+def seed():
+    """Populate the network with three personas + sample history so the
+    app has something to look at on first visit. By default refuses if
+    state is non-empty; pass ``?force=true`` to wipe and re-seed.
+    """
+    force = request.args.get("force", "").lower() in ("1", "true", "yes")
+    if STATE_PATH.exists() and not force:
+        g = _game()
+        if g.repo.list_users():
+            return _err("already seeded; pass ?force=true to overwrite", status=409)
+
+    if STATE_PATH.exists():
+        STATE_PATH.unlink()
+    g = _game()
+
+    # Three personas with hand-picked display names.
+    g.register("alice", display_name="山田アリス", starting_yen=2500)
+    g.register("bob",   display_name="田中タロウ", starting_yen=2000)
+    g.register("carol", display_name="鈴木ハナ",   starting_yen=1500)
+
+    # Spontaneous history — Alice has been generous, Bob middling,
+    # Carol mostly receives.
+    g.report_spontaneous(giver="alice", receiver="bob",   kind=FavorKind.SEAT,    note="JR 山手線")
+    g.report_spontaneous(giver="alice", receiver="bob",   kind=FavorKind.SEAT,    note="バス")
+    g.report_spontaneous(giver="alice", receiver="carol", kind=FavorKind.LUGGAGE, note="駅階段で")
+    g.report_spontaneous(giver="alice", receiver="carol", kind=FavorKind.CHILD_WATCH, note="カフェで5分")
+    g.report_spontaneous(giver="bob",   receiver="carol", kind=FavorKind.TOILET_ORDER)
+    g.report_spontaneous(giver="bob",   receiver="alice", kind=FavorKind.LUGGAGE, note="お返し")
+
+    # A completed paid request: Carol asked Bob to swap toilet order.
+    req_done = g.request_favor(
+        requester="carol", kind=FavorKind.TOILET_ORDER, bounty_yen=100,
+    )
+    g.accept_favor(accepter="bob", request_id=req_done.id)
+    g.complete_favor(requester="carol", request_id=req_done.id)
+
+    # An accepted-but-not-yet-completed request: Alice asked Bob to watch
+    # her child briefly. Shows up in the active feed.
+    req_inflight = g.request_favor(
+        requester="alice", kind=FavorKind.CHILD_WATCH, bounty_yen=300,
+        description="駅で5分だけ見ててほしい",
+    )
+    g.accept_favor(accepter="bob", request_id=req_inflight.id)
+
+    # An open request waiting on someone: Carol asks for a seat with cash.
+    g.request_favor(
+        requester="carol", kind=FavorKind.SEAT, bounty_yen=200,
+        description="新幹線で作業したいので",
+    )
+
+    g.save()
+    return jsonify({
+        "ok": True,
+        "users": [u.to_dict() for u in g.repo.list_users()],
+        "message": "seeded 3 personas + 6 spontaneous acts + 3 requests",
+    }), 201
 
 
 # ----------------------------------------------------------------------
