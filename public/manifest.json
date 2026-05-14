@@ -1,0 +1,21 @@
+{
+  "name": "tasukete — ご近所たすけて",
+  "short_name": "tasukete",
+  "description": "些細な困りごとを、些細なお金で、その場で解決する。",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fafaf5",
+  "theme_color": "#e85d04",
+  "lang": "ja",
+  "scope": "/",
+  "categories": ["social", "lifestyle"],
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

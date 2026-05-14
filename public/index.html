@@ -2,88 +2,106 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no,maximum-scale=1" />
 <meta name="color-scheme" content="light" />
-<meta name="theme-color" content="#faf6ec" />
-<title>お絵かきロジック — 数字から絵を解く</title>
+<meta name="theme-color" content="#e85d04" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="たすけて" />
+<link rel="manifest" href="/manifest.json" />
+<link rel="icon" type="image/svg+xml" href="/icon.svg" />
+<link rel="apple-touch-icon" href="/icon.svg" />
+<title>たすけて — ご近所のちょっとしたお願い</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Inter:wght@500;600;700&family=DM+Mono:wght@500;600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Inter:wght@500;600;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-  /* ===================================================================
-   * tokens
-   * =================================================================== */
+  /* =====================================================================
+   *  tokens
+   * ===================================================================== */
   :root {
-    --paper:        #faf6ec;
-    --paper-2:      #f1ecdc;
-    --surface:      #ffffff;
-    --ink:          #1a1f2c;
-    --ink-soft:     #2d3445;
-    --muted:        #6b7280;
-    --muted-2:      #9ca3af;
-    --rule:         #e3dccc;
-    --rule-strong:  #a8a294;
-    --rule-major:   #1a1f2c;
-    --accent:       #dc2626;
-    --accent-2:     #f59e0b;
-    --good:         #059669;
-    --hint:         #f59e0b;
-    --mark:         #b45309;
-    --radius:       12px;
-    --shadow-sm:    0 1px 2px rgba(26, 31, 44, 0.06);
-    --shadow:       0 10px 30px rgba(26, 31, 44, 0.08), 0 2px 6px rgba(26, 31, 44, 0.04);
-    --shadow-lg:    0 24px 60px rgba(26, 31, 44, 0.14);
-    --cell:         clamp(20px, 5.5vw, 36px);
+    --bg-0:        #fdfaf2;
+    --bg-1:        #f3eedd;
+    --surface:     #ffffff;
+    --surface-2:   #fbf7eb;
+    --ink:         #1f2937;
+    --ink-soft:    #374151;
+    --muted:       #6b7280;
+    --muted-2:     #9ca3af;
+    --rule:        #e5e0d1;
+    --rule-strong: #c8c2b0;
+    --accent:      #e85d04;
+    --accent-2:    #f59e0b;
+    --good:        #059669;
+    --danger:      #dc2626;
+    --info:        #2563eb;
+    --radius-sm:   10px;
+    --radius:      14px;
+    --radius-lg:   20px;
+    --shadow-sm:   0 1px 2px rgba(31, 41, 55, 0.06);
+    --shadow:      0 8px 24px rgba(31, 41, 55, 0.08), 0 2px 6px rgba(31, 41, 55, 0.04);
+    --shadow-lg:   0 24px 60px rgba(31, 41, 55, 0.14);
+    --safe-top:    env(safe-area-inset-top, 0px);
+    --safe-bot:    env(safe-area-inset-bottom, 0px);
+    --nav-h:       64px;
   }
 
-  /* ===================================================================
-   * reset / global
-   * =================================================================== */
-  *, *::before, *::after { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; }
+  /* =====================================================================
+   *  reset / global
+   * ===================================================================== */
+  *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { margin: 0; padding: 0; height: 100%; overscroll-behavior-y: none; }
   body {
     font-family: "Noto Sans JP", -apple-system, BlinkMacSystemFont, sans-serif;
     background:
-      radial-gradient(900px 700px at 12% -10%, rgba(245, 158, 11, 0.10), transparent 60%),
-      radial-gradient(700px 600px at 110% 4%, rgba(220, 38, 38, 0.06), transparent 55%),
-      linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
+      radial-gradient(900px 700px at 12% -10%, rgba(232, 93, 4, 0.08), transparent 60%),
+      radial-gradient(700px 600px at 110% 6%, rgba(245, 158, 11, 0.08), transparent 55%),
+      linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 100%);
     background-attachment: fixed;
     color: var(--ink);
-    min-height: 100vh;
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
+    min-height: 100dvh;
   }
   button { font-family: inherit; }
-  ::selection { background: rgba(220, 38, 38, 0.18); }
+  ::selection { background: rgba(232, 93, 4, 0.2); }
 
-  /* ===================================================================
-   * topbar
-   * =================================================================== */
+  /* =====================================================================
+   *  app shell
+   * ===================================================================== */
+  #app {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    padding-bottom: calc(var(--nav-h) + var(--safe-bot));
+  }
+
   .topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
-    padding: 14px 18px;
-    background: rgba(255, 255, 255, 0.7);
+    gap: 8px;
+    padding: calc(8px + var(--safe-top)) 16px 8px;
+    background: rgba(253, 250, 242, 0.92);
     border-bottom: 1px solid var(--rule);
     backdrop-filter: blur(20px);
     position: sticky;
     top: 0;
     z-index: 50;
   }
-  .brand { display: flex; align-items: center; gap: 11px; }
+  .brand { display: flex; align-items: center; gap: 9px; }
   .brand-mark {
-    width: 32px; height: 32px;
+    width: 30px; height: 30px;
     display: grid; place-items: center;
     border-radius: 8px;
-    background: var(--ink);
-    color: var(--paper);
+    background: linear-gradient(135deg, var(--accent-2), var(--accent));
+    color: #fffef9;
     box-shadow: var(--shadow-sm);
   }
-  .brand-mark svg { width: 18px; height: 18px; }
+  .brand-mark svg { width: 17px; height: 17px; }
   .brand-name {
     font-family: "Inter", "Noto Sans JP", sans-serif;
     font-weight: 700;
@@ -96,1349 +114,1356 @@
     font-size: 11px;
     color: var(--muted);
     line-height: 1.4;
-    margin-top: 2px;
   }
-  .top-controls { display: flex; gap: 6px; align-items: center; }
-  .top-controls .pill {
-    display: inline-flex; align-items: center; gap: 6px;
+  .top-actions { display: flex; gap: 6px; align-items: center; }
+  .icon-btn {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 1px solid var(--rule);
+    background: var(--surface);
+    color: var(--ink-soft);
+    display: grid; place-items: center;
+    cursor: pointer;
+    box-shadow: var(--shadow-sm);
+  }
+  .icon-btn:active { transform: scale(0.96); }
+  .icon-btn svg { width: 16px; height: 16px; }
+  .icon-btn[disabled] { opacity: 0.4; }
+
+  /* main scroll area */
+  main {
+    flex: 1;
+    max-width: 720px;
+    margin: 0 auto;
+    width: 100%;
+    padding: 16px;
+  }
+
+  /* hide all views by default; current view becomes block */
+  .view { display: none; flex-direction: column; gap: 12px; animation: fadein 0.18s ease-out; }
+  .view.show { display: flex; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+  /* =====================================================================
+   *  bottom nav
+   * ===================================================================== */
+  .nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: calc(var(--nav-h) + var(--safe-bot));
+    padding: 0 8px var(--safe-bot);
+    display: flex;
+    align-items: stretch;
+    justify-content: space-around;
+    background: rgba(255, 255, 255, 0.96);
+    border-top: 1px solid var(--rule);
+    box-shadow: 0 -8px 24px rgba(31, 41, 55, 0.06);
+    z-index: 40;
+    backdrop-filter: blur(20px);
+  }
+  .nav button {
+    flex: 1;
+    background: none;
+    border: 0;
+    color: var(--muted);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 10.5px;
+    font-weight: 500;
+    padding: 4px 0;
+    position: relative;
+    transition: color 0.15s;
+  }
+  .nav button svg { width: 22px; height: 22px; }
+  .nav button.active { color: var(--accent); }
+  .nav button .badge {
+    position: absolute;
+    top: 6px;
+    right: calc(50% - 18px);
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    background: var(--accent);
+    color: white;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+  }
+
+  /* =====================================================================
+   *  primitives
+   * ===================================================================== */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 14px;
+    box-shadow: var(--shadow-sm);
+  }
+  .card-title {
+    margin: 0 0 4px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+  }
+  .card-help { color: var(--muted); font-size: 12px; margin: 0; }
+
+  label.field {
+    display: block;
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--muted);
+    margin-bottom: 6px;
+    letter-spacing: 0.02em;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  input[type="email"],
+  textarea,
+  select {
+    width: 100%;
+    background: var(--surface-2);
+    color: var(--ink);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font: inherit;
+    font-size: 15px;
+    min-height: 44px;
+    transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+  }
+  input:focus, textarea:focus, select:focus {
+    outline: 0;
+    border-color: var(--accent);
+    background: var(--surface);
+    box-shadow: 0 0 0 3px rgba(232, 93, 4, 0.18);
+  }
+  textarea { min-height: 80px; resize: vertical; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    background: var(--accent);
+    color: white;
+    border: 0;
+    border-radius: 12px;
+    padding: 12px 18px;
+    font: inherit;
+    font-weight: 700;
+    font-size: 15px;
+    cursor: pointer;
+    min-height: 46px;
+    box-shadow: 0 6px 16px rgba(232, 93, 4, 0.25);
+    transition: transform 0.08s, box-shadow 0.15s, background 0.15s;
+  }
+  .btn:active { transform: translateY(1px); }
+  .btn:disabled { opacity: 0.5; cursor: not-allowed; box-shadow: none; }
+  .btn svg { width: 16px; height: 16px; }
+  .btn.block { width: 100%; }
+  .btn.ghost {
+    background: transparent;
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    box-shadow: none;
+    font-weight: 500;
+  }
+  .btn.ghost:hover { border-color: var(--ink-soft); }
+  .btn.danger {
+    background: rgba(220, 38, 38, 0.08);
+    color: var(--danger);
+    border: 1px solid rgba(220, 38, 38, 0.22);
+    box-shadow: none;
+  }
+  .btn.good { background: var(--good); box-shadow: 0 6px 16px rgba(5, 150, 105, 0.25); }
+  .btn.sm { padding: 8px 12px; min-height: 36px; font-size: 13px; }
+
+  /* segmented control */
+  .seg {
+    display: flex;
+    background: var(--surface-2);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 3px;
+    gap: 2px;
+  }
+  .seg button {
+    flex: 1;
+    border: 0;
+    background: transparent;
+    color: var(--muted);
+    padding: 9px 8px;
+    border-radius: 9px;
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 600;
+    transition: all 0.15s;
+  }
+  .seg button.active {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* chip grid (kind picker) */
+  .kind-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+  .kind-chip {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 14px 6px;
+    background: var(--surface);
+    border: 1.5px solid var(--rule);
+    border-radius: 14px;
+    cursor: pointer;
+    transition: all 0.12s;
+    min-height: 86px;
+    color: var(--ink-soft);
+  }
+  .kind-chip:active { transform: scale(0.97); }
+  .kind-chip svg { width: 26px; height: 26px; color: var(--muted); }
+  .kind-chip .lbl { font-size: 12px; font-weight: 600; }
+  .kind-chip.active {
+    border-color: var(--accent);
+    background: rgba(232, 93, 4, 0.05);
+    color: var(--accent);
+  }
+  .kind-chip.active svg { color: var(--accent); }
+
+  /* bounty pills */
+  .pills {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+  .pill {
+    background: var(--surface);
+    border: 1.5px solid var(--rule);
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    cursor: pointer;
+    font-family: "Inter", "Noto Sans JP", sans-serif;
+    font-variant-numeric: tabular-nums;
+  }
+  .pill:active { transform: scale(0.97); }
+  .pill.active {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: white;
+  }
+
+  /* request card */
+  .req-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    padding: 14px;
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    gap: 10px;
+    box-shadow: var(--shadow-sm);
+    position: relative;
+    overflow: hidden;
+  }
+  .req-card .kind-ic {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: rgba(232, 93, 4, 0.08);
+    color: var(--accent);
+    display: grid; place-items: center;
+  }
+  .req-card .kind-ic svg { width: 20px; height: 20px; }
+  .req-card .who { font-size: 12.5px; color: var(--muted); margin-bottom: 2px; }
+  .req-card .who b { color: var(--ink); font-weight: 600; }
+  .req-card .title { font-size: 14.5px; color: var(--ink); font-weight: 600; }
+  .req-card .desc { font-size: 13px; color: var(--ink-soft); margin-top: 2px; }
+  .req-card .meta {
+    display: flex; gap: 8px;
+    margin-top: 6px;
+    color: var(--muted);
+    font-size: 11.5px;
+  }
+  .req-card .meta b { color: var(--ink); font-weight: 600; font-family: "Inter", monospace; }
+  .req-card .price {
+    text-align: right;
+    color: var(--accent);
+    font-weight: 700;
+    font-family: "Inter", "Noto Sans JP", sans-serif;
+    font-size: 17px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+  .req-card .price::before { content: "¥"; opacity: 0.7; margin-right: 1px; }
+  .req-card .actions {
+    grid-column: 1 / -1;
+    display: flex;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .req-card .actions .btn { flex: 1; }
+  .req-card .badge-status {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .badge-status.open    { background: rgba(232, 93, 4, 0.10); color: var(--accent); }
+  .badge-status.accepted{ background: rgba(37, 99, 235, 0.10); color: var(--info); }
+  .badge-status.helper  { background: rgba(245, 158, 11, 0.15); color: #b45309; }
+  .badge-status.done    { background: rgba(5, 150, 105, 0.10); color: var(--good); }
+  .badge-status.cancel  { background: rgba(107, 114, 128, 0.10); color: var(--muted); }
+  .badge-status.dispute { background: rgba(220, 38, 38, 0.10); color: var(--danger); }
+
+  /* empty state */
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    padding: 36px 18px;
+    border: 1.5px dashed var(--rule-strong);
+    border-radius: var(--radius);
+    background: var(--surface-2);
+  }
+  .empty svg {
+    width: 36px; height: 36px;
+    color: var(--muted-2);
+    margin-bottom: 8px;
+  }
+  .empty h3 { color: var(--ink-soft); margin: 0 0 4px; font-size: 14.5px; font-weight: 700; }
+  .empty p { margin: 0; font-size: 12.5px; }
+
+  /* loc strip */
+  .loc-strip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     background: var(--surface);
     border: 1px solid var(--rule);
     border-radius: 999px;
-    padding: 6px 10px 6px 8px;
+    padding: 6px 12px 6px 10px;
     font-size: 12.5px;
     color: var(--ink-soft);
     box-shadow: var(--shadow-sm);
   }
-  .top-controls .pill svg { width: 14px; height: 14px; color: var(--muted); }
-  .top-controls .pill b {
-    color: var(--ink);
-    font-family: "Inter", sans-serif;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-  }
-
-  /* ===================================================================
-   * layout
-   * =================================================================== */
-  main {
-    max-width: 980px;
-    margin: 0 auto;
-    padding: 22px 16px 80px;
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 14px;
-  }
-  @media (min-width: 900px) {
-    main {
-      grid-template-columns: minmax(0, 1.6fr) minmax(220px, 1fr);
-    }
-  }
-
-  /* ===================================================================
-   * hero
-   * =================================================================== */
-  .hero {
-    grid-column: 1 / -1;
-  }
-  .eyebrow {
-    color: var(--muted);
-    font-family: "Inter", sans-serif;
-    text-transform: uppercase;
-    font-size: 10.5px;
-    letter-spacing: 0.22em;
-    font-weight: 600;
-    margin-bottom: 6px;
-  }
-  h1.title {
-    font-size: clamp(26px, 5vw, 38px);
-    line-height: 1.18;
-    margin: 0 0 6px;
-    letter-spacing: -0.015em;
-    font-weight: 700;
-    color: var(--ink);
-  }
-  h1.title .accent {
-    background: linear-gradient(110deg, var(--accent) 10%, var(--accent-2) 90%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  .lead {
-    color: var(--muted);
-    font-size: 14.5px;
-    max-width: 580px;
-    margin: 0 0 10px;
-  }
-
-  /* ===================================================================
-   * board card
-   * =================================================================== */
-  .board {
-    background: var(--surface);
-    border: 1px solid var(--rule);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: 16px;
-    position: relative;
-    overflow: hidden;
-  }
-  .board-head {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 12px;
-    flex-wrap: wrap;
-  }
-  .puzzle-meta { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1; }
-  .puzzle-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: var(--ink);
-    letter-spacing: -0.01em;
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .puzzle-meta .sep { color: var(--rule-strong); }
-  .puzzle-size { color: var(--muted); font-size: 12.5px; font-family: "Inter", sans-serif; font-variant-numeric: tabular-nums; }
-  .puzzle-diff {
-    display: inline-flex; align-items: center; gap: 4px;
-    background: var(--paper-2);
-    border-radius: 999px;
-    padding: 2px 9px;
-    font-size: 11px;
-    color: var(--ink-soft);
-    font-weight: 600;
-  }
-  .puzzle-diff.tiny    { color: #4338ca; background: #eef2ff; }
-  .puzzle-diff.easy    { color: #047857; background: #d1fae5; }
-  .puzzle-diff.medium  { color: #b45309; background: #fef3c7; }
-  .puzzle-diff.hard    { color: #b91c1c; background: #fee2e2; }
-
-  .clock {
-    display: inline-flex; align-items: center; gap: 5px;
-    background: var(--ink);
-    color: var(--paper);
-    padding: 4px 10px 4px 8px;
-    border-radius: 999px;
-    font-family: "DM Mono", monospace;
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    font-size: 13px;
-  }
-  .clock svg { width: 12px; height: 12px; }
-  .clock.paused { background: var(--muted-2); }
-  .clock.won { background: var(--good); }
-
-  /* ===================================================================
-   * the actual grid
-   * =================================================================== */
-  .grid-wrap {
-    display: flex;
-    justify-content: center;
-    padding: 6px 0 2px;
-    user-select: none;
-    -webkit-user-select: none;
-    touch-action: none;
-  }
-  .grid {
-    display: grid;
-    gap: 0;
-    background: var(--ink);    /* shows through as cell borders */
-    padding: 2px;
-    border-radius: 6px;
-  }
-  /* The corner above row clues and left of column clues. */
-  .corner { background: transparent; }
-  /* Column clues live in the first row of the grid, row clues in the first column. */
-  .ccol, .crow {
-    background: var(--surface);
-    color: var(--ink-soft);
-    font-family: "DM Mono", "Inter", monospace;
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    font-size: clamp(11px, 2.6vw, 14px);
-    display: flex;
-    padding: 4px 3px;
-    position: relative;
-    transition: background 0.15s, color 0.15s;
-  }
-  .ccol { flex-direction: column; align-items: center; justify-content: flex-end; }
-  .crow { flex-direction: row; align-items: center; justify-content: flex-end; gap: 4px; }
-  .ccol > span, .crow > span { line-height: 1.05; }
-  .ccol > span.satisfied, .crow > span.satisfied { color: var(--muted-2); text-decoration: line-through; }
-  .ccol.hilite, .crow.hilite {
-    background: rgba(245, 158, 11, 0.12);
-    color: var(--ink);
-  }
-  /* Body cells. */
-  .cell {
-    background: var(--surface);
-    width: var(--cell);
-    height: var(--cell);
+  .loc-strip .pin {
+    width: 22px; height: 22px;
+    background: rgba(37, 99, 235, 0.08);
+    color: var(--info);
+    border-radius: 50%;
     display: grid; place-items: center;
-    position: relative;
-    cursor: pointer;
-    transition: background 0.05s;
+    flex-shrink: 0;
   }
-  .cell .glyph { width: 70%; height: 70%; opacity: 0; transition: opacity 0.06s, transform 0.1s; }
-  .cell[data-v="1"] { background: var(--ink); }
-  .cell[data-v="0"] .glyph { opacity: 1; color: var(--accent); }
-  .cell[data-v="0"][data-mistake="1"] .glyph { color: var(--accent); }
-  .cell[data-v="1"][data-mistake="1"] { background: repeating-linear-gradient(45deg, var(--accent) 0 6px, #ef4444 6px 12px); }
-  /* Major rule highlight every 5 cells */
-  .cell.major-right { box-shadow: inset -1px 0 0 0 var(--rule-major); }
-  .cell.major-bottom { box-shadow: inset 0 -1px 0 0 var(--rule-major); }
-  .cell.major-right.major-bottom { box-shadow: inset -1px 0 0 0 var(--rule-major), inset 0 -1px 0 0 var(--rule-major); }
-  .cell.hilite { background: rgba(245, 158, 11, 0.10); }
-  .cell.hilite[data-v="1"] { background: var(--ink); }
-  .cell.hint-pulse { animation: hint-pulse 1.4s ease-out; }
-  @keyframes hint-pulse {
-    0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
-    50%  { box-shadow: 0 0 0 14px rgba(245, 158, 11, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
-  }
-
-  /* ===================================================================
-   * controls bar (below grid)
-   * =================================================================== */
-  .toolbar {
-    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
-    margin-top: 12px;
-  }
-  .tool {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: var(--surface);
-    color: var(--ink-soft);
-    border: 1px solid var(--rule);
-    border-radius: 10px;
-    padding: 8px 12px;
-    font: inherit; font-weight: 500; font-size: 13px;
-    cursor: pointer;
-    transition: all 0.12s;
-    min-height: 38px;
-  }
-  .tool:hover { border-color: var(--ink); color: var(--ink); }
-  .tool svg { width: 14px; height: 14px; }
-  .tool.primary {
-    background: var(--ink);
-    color: var(--paper);
-    border-color: var(--ink);
-  }
-  .tool.primary:hover { background: #2d3445; }
-  .tool.active {
-    background: var(--accent);
-    border-color: var(--accent);
-    color: white;
-    box-shadow: 0 4px 10px rgba(220, 38, 38, 0.25);
-  }
-  .tool[disabled] { opacity: 0.5; cursor: not-allowed; }
-  .toolbar .spacer { flex: 1; }
-
-  /* The progress meter pinned to the toolbar */
-  .progress {
-    display: inline-flex; align-items: center; gap: 6px;
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .progress b {
-    font-family: "DM Mono", monospace;
-    color: var(--ink);
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-  }
-
-  /* ===================================================================
-   * side rail
-   * =================================================================== */
-  .rail { display: flex; flex-direction: column; gap: 14px; }
-  .panel {
-    background: var(--surface);
-    border: 1px solid var(--rule);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow-sm);
-    padding: 14px;
-  }
-  .panel h2 {
-    margin: 0 0 10px;
-    font-size: 13px;
-    font-weight: 700;
-    color: var(--ink);
-    letter-spacing: -0.005em;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .panel h2 svg { width: 14px; height: 14px; color: var(--accent); }
-  .panel .help {
-    font-size: 12px; color: var(--muted); margin: 0 0 8px;
-  }
-
-  /* puzzle picker list */
-  .picker { display: flex; flex-direction: column; gap: 4px; }
-  .pick-item {
-    display: grid;
-    grid-template-columns: auto 1fr auto;
-    gap: 10px;
-    align-items: center;
-    padding: 8px 10px;
-    border-radius: 8px;
-    cursor: pointer;
-    border: 1px solid transparent;
-    transition: background 0.12s, border-color 0.12s;
-  }
-  .pick-item:hover { background: var(--paper-2); }
-  .pick-item.active {
-    background: var(--paper-2);
-    border-color: var(--rule);
-  }
-  .pick-item .pick-thumb {
-    width: 28px; height: 28px;
-    border-radius: 5px;
-    overflow: hidden;
-    background: var(--paper);
-    box-shadow: var(--shadow-sm);
-  }
-  .pick-item .pick-thumb svg { display: block; }
-  .pick-item .pick-name {
-    font-size: 13px; font-weight: 600;
-    color: var(--ink);
-    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  }
-  .pick-item .pick-sub {
-    font-size: 11px; color: var(--muted); margin-top: 1px;
-  }
-  .pick-item .pick-state {
-    display: inline-flex; align-items: center; gap: 3px;
+  .loc-strip .pin svg { width: 12px; height: 12px; }
+  .loc-strip .label { font-weight: 500; }
+  .loc-strip .coords {
     color: var(--muted);
     font-size: 11px;
-    font-family: "DM Mono", monospace;
-  }
-  .pick-item .pick-state.done { color: var(--good); }
-  .pick-item .pick-state svg { width: 11px; height: 11px; }
-
-  .difficulty-tabs {
-    display: flex; gap: 4px; margin-bottom: 8px;
-    padding: 3px;
-    background: var(--paper);
-    border-radius: 9px;
-    border: 1px solid var(--rule);
-  }
-  .difficulty-tabs button {
-    flex: 1;
-    border: 0; background: transparent;
-    padding: 6px 8px;
-    border-radius: 6px;
-    color: var(--muted);
-    font: inherit;
-    font-size: 11.5px; font-weight: 600;
-    cursor: pointer;
-    transition: all 0.12s;
-  }
-  .difficulty-tabs button:hover { color: var(--ink); }
-  .difficulty-tabs button.active {
-    background: var(--surface);
-    color: var(--ink);
-    box-shadow: var(--shadow-sm);
-  }
-
-  /* stats */
-  .stat-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-  }
-  .stat {
-    background: var(--paper);
-    border-radius: 8px;
-    padding: 9px 11px;
-    border: 1px solid var(--rule);
-  }
-  .stat .label { color: var(--muted); font-size: 11px; }
-  .stat .value {
-    font-family: "DM Mono", monospace;
-    font-weight: 600;
-    font-size: 17px;
-    color: var(--ink);
+    font-family: "Inter", monospace;
     font-variant-numeric: tabular-nums;
   }
-  .stat .value small { color: var(--muted-2); font-size: 12px; font-weight: 500; }
-
-  /* ===================================================================
-   * win overlay
-   * =================================================================== */
-  .win-bg {
-    position: fixed; inset: 0;
-    background: rgba(250, 246, 236, 0.85);
-    backdrop-filter: blur(10px);
-    z-index: 200;
-    display: grid; place-items: center;
-    padding: 24px;
-    animation: fade-in 0.3s ease-out;
+  .loc-strip button {
+    margin-left: auto;
+    background: none; border: 0;
+    color: var(--accent);
+    font-size: 12.5px; font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
   }
-  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-  .win-card {
-    background: var(--surface);
-    border: 1px solid var(--rule);
-    border-radius: 18px;
-    box-shadow: var(--shadow-lg);
-    padding: 28px;
-    max-width: 420px;
+
+  /* sign in */
+  .signin-host {
+    min-height: 70dvh;
+    display: grid;
+    place-items: center;
+    padding: 20px;
+  }
+  .signin {
     width: 100%;
+    max-width: 360px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 22px;
+    box-shadow: var(--shadow);
+    padding: 24px;
     text-align: center;
-    position: relative;
-    animation: pop-in 0.4s cubic-bezier(0.2, 0.7, 0.3, 1.2);
   }
-  @keyframes pop-in {
-    from { transform: scale(0.85); opacity: 0; }
-    to { transform: scale(1); opacity: 1; }
-  }
-  .win-card h2 {
-    font-size: 28px;
-    margin: 0 0 6px;
-    color: var(--ink);
-    letter-spacing: -0.02em;
-  }
-  .win-card .preview {
-    width: min(160px, 60vw);
-    margin: 14px auto;
-  }
-  .win-card .time-big {
-    font-family: "DM Mono", monospace;
-    font-weight: 600;
-    font-size: 32px;
-    color: var(--good);
-    margin: 4px 0;
-    font-variant-numeric: tabular-nums;
-  }
-  .win-card .pb-badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    background: linear-gradient(120deg, var(--accent-2), var(--accent));
+  .signin .logo {
+    width: 64px; height: 64px;
+    margin: 4px auto 12px;
+    background: linear-gradient(135deg, var(--accent-2), var(--accent));
+    border-radius: 16px;
+    display: grid; place-items: center;
     color: white;
-    padding: 4px 10px;
-    border-radius: 999px;
-    font-size: 12px;
-    font-weight: 600;
-    margin-bottom: 12px;
+    box-shadow: var(--shadow);
   }
-  .win-card .pb-badge svg { width: 12px; height: 12px; }
-  .win-card .row {
-    display: flex; gap: 12px; margin-top: 8px;
-    color: var(--muted); font-size: 13px;
-  }
-  .win-card .row .col {
-    flex: 1;
-    text-align: center;
-  }
-  .win-card .row .col .v {
-    font-family: "DM Mono", monospace;
-    font-weight: 600;
-    color: var(--ink);
-    font-size: 18px;
-    font-variant-numeric: tabular-nums;
-  }
-  .win-actions {
-    display: flex; gap: 8px; margin-top: 18px;
-  }
-  .win-actions .tool { flex: 1; justify-content: center; }
-  .win-confetti {
-    position: absolute; top: 50%; left: 50%;
-    width: 8px; height: 8px;
-    opacity: 0;
-    pointer-events: none;
-    animation: confetti 1.6s ease-out forwards;
-  }
-  @keyframes confetti {
-    0%   { opacity: 1; transform: translate(0, 0) rotate(0deg); }
-    100% { opacity: 0; transform: var(--end) rotate(720deg); }
-  }
+  .signin .logo svg { width: 32px; height: 32px; }
+  .signin h2 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.01em; }
+  .signin .lead { color: var(--muted); font-size: 13.5px; margin: 0 0 20px; }
+  .signin .input-row { text-align: left; margin-bottom: 12px; }
 
-  /* ===================================================================
-   * toasts
-   * =================================================================== */
+  /* toasts */
   .toasts {
     position: fixed;
-    right: 16px;
-    bottom: 16px;
-    display: flex; flex-direction: column; gap: 8px;
-    z-index: 100; pointer-events: none;
+    left: 50%;
+    bottom: calc(var(--nav-h) + var(--safe-bot) + 16px);
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    z-index: 100;
+    pointer-events: none;
+    max-width: 92vw;
   }
   .toast {
-    background: var(--surface);
-    border: 1px solid var(--rule);
-    border-left: 3px solid var(--accent);
-    border-radius: 10px;
-    padding: 10px 14px;
-    font-size: 13px;
-    color: var(--ink-soft);
-    box-shadow: var(--shadow);
-    animation: toast-in 0.25s ease-out;
-    max-width: 320px;
-    display: flex; align-items: center; gap: 8px;
-    pointer-events: auto;
-  }
-  .toast.info { border-left-color: var(--accent-2); }
-  .toast.ok { border-left-color: var(--good); }
-  .toast.err { border-left-color: var(--accent); }
-  .toast svg { width: 14px; height: 14px; flex-shrink: 0; }
-  .toast.ok svg { color: var(--good); }
-  .toast.info svg { color: var(--accent-2); }
-  .toast.err svg { color: var(--accent); }
-  @keyframes toast-in {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  /* ===================================================================
-   * keyboard hint
-   * =================================================================== */
-  .kbd-hint {
-    position: fixed;
-    bottom: 14px; left: 50%;
-    transform: translateX(-50%);
-    font-size: 11px;
-    color: var(--muted-2);
-    background: rgba(255, 255, 255, 0.85);
-    border: 1px solid var(--rule);
+    background: var(--ink);
+    color: white;
+    padding: 11px 18px;
     border-radius: 999px;
-    padding: 4px 12px;
-    pointer-events: none;
-    display: none;
+    font-size: 13px;
+    box-shadow: var(--shadow-lg);
+    animation: toast-in 0.25s ease-out, toast-out 0.25s ease-in 2.6s forwards;
+    pointer-events: auto;
+    display: flex; align-items: center; gap: 8px;
+    max-width: 100%;
   }
-  @media (min-width: 800px) { .kbd-hint { display: inline-block; } }
-  .kbd-hint kbd {
-    font-family: "DM Mono", monospace;
-    font-size: 10.5px;
-    background: var(--paper);
+  .toast.ok    { background: var(--good); }
+  .toast.err   { background: var(--danger); }
+  .toast svg { width: 14px; height: 14px; }
+  @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+  @keyframes toast-out { to { opacity: 0; transform: translateY(8px); } }
+
+  /* stat rows */
+  .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat {
+    background: var(--surface-2);
+    border-radius: 10px;
+    padding: 10px 12px;
     border: 1px solid var(--rule);
-    border-radius: 4px;
-    padding: 1px 5px;
-    margin: 0 2px;
+  }
+  .stat .label { font-size: 11px; color: var(--muted); }
+  .stat .v {
+    font-family: "Inter", monospace;
+    font-weight: 700;
+    font-size: 19px;
     color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .v small { color: var(--muted); font-weight: 500; font-size: 12px; }
+
+  /* loading skeleton */
+  .skeleton { background: linear-gradient(90deg, var(--rule) 0%, var(--surface-2) 50%, var(--rule) 100%);
+    background-size: 200% 100%; animation: shimmer 1.4s infinite linear; border-radius: 6px; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+  /* radius slider */
+  .slider-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-top: 6px;
+  }
+  .slider-row input[type="range"] { flex: 1; accent-color: var(--accent); }
+  .slider-row .v {
+    font-family: "Inter", monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 13px;
+    min-width: 50px;
+    text-align: right;
   }
 </style>
 </head>
 <body>
 
 <!-- =====================================================================
-SVG sprite — every icon defined once, referenced via <use href="#i-name"/>.
+SVG sprite — single source of truth for every icon used in the UI.
 ====================================================================== -->
-<svg style="position:absolute; width:0; height:0; overflow:hidden" aria-hidden="true">
+<svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
   <defs>
     <symbol id="i-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="3" width="18" height="18" rx="2"/>
-      <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
-      <rect x="3" y="3" width="6" height="6" fill="currentColor"/>
-      <rect x="15" y="9" width="6" height="6" fill="currentColor"/>
-      <rect x="9" y="15" width="6" height="6" fill="currentColor"/>
+      <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/>
+    </symbol>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+      <path d="M12 5v14M5 12h14"/>
+    </symbol>
+    <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 13v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6"/>
+      <path d="M3 13l3-9h12l3 9"/>
+      <path d="M3 13h6l1 2h4l1-2h6"/>
+    </symbol>
+    <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="8" r="4"/>
+      <path d="M4 21c0-4 4-7 8-7s8 3 8 7"/>
+    </symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12a9 9 0 1 1-3-6.7L21 8"/>
+      <path d="M21 3v5h-5"/>
+    </symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 22s7-7 7-12a7 7 0 1 0-14 0c0 5 7 12 7 12z"/>
+      <circle cx="12" cy="10" r="2.5"/>
+    </symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12l4.5 4.5L19 7"/>
+    </symbol>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 6l12 12M18 6L6 18"/>
+    </symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3l10 18H2z"/>
+      <path d="M12 10v5"/>
+      <circle cx="12" cy="18" r="0.7" fill="currentColor"/>
+    </symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h3"/>
+      <path d="M16 8l4 4-4 4M20 12H10"/>
+    </symbol>
+    <symbol id="i-mail" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="5" width="18" height="14" rx="2"/>
+      <path d="M3 7l9 6 9-6"/>
     </symbol>
     <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="9"/>
       <path d="M12 7v5l3 2"/>
     </symbol>
-    <symbol id="i-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
-      <path d="M6 6l12 12M18 6L6 18"/>
+    <symbol id="i-coin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M9 9l3 4 3-4M9 13h6M11 13v3"/>
     </symbol>
-    <symbol id="i-fill" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-      <rect x="5" y="5" width="14" height="14"/>
+    <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3l8 3v7c0 5-4 8-8 8s-8-3-8-8V6z"/>
+      <path d="M9 12l2 2 4-4"/>
     </symbol>
-    <symbol id="i-hint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M9 18h6M10 21h4"/>
-      <path d="M12 3a6 6 0 0 0-4 10.5c1 1 1.5 2 1.5 3v.5h5V17c0-1 .5-2 1.5-3A6 6 0 0 0 12 3z"/>
+    <symbol id="i-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12a9 9 0 1 1-3-6.7"/>
     </symbol>
-    <symbol id="i-reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
-      <path d="M3 3v5h5"/>
+
+    <!-- favor kinds -->
+    <symbol id="k-seat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 16h14M5 16v4M19 16v4"/>
+      <path d="M7 16V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v9"/>
+      <path d="M9 12h6"/>
     </symbol>
-    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M5 12l4.5 4.5L19 7"/>
+    <symbol id="k-luggage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="7" width="14" height="13" rx="2"/>
+      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+      <path d="M9 11v6M15 11v6"/>
     </symbol>
-    <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M5 12h14M13 5l7 7-7 7"/>
+    <symbol id="k-toilet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="3" width="16" height="18" rx="1.5"/>
+      <circle cx="9" cy="9" r="1.4"/>
+      <path d="M7.5 16c0-2 1-3.5 1.5-3.5s1.5 1.5 1.5 3.5"/>
+      <circle cx="15" cy="9" r="1.4"/>
+      <path d="M13.5 16h3M15 12.5V16"/>
     </symbol>
-    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M6 6l12 12M18 6L6 18"/>
+    <symbol id="k-child" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="6" r="2.5"/>
+      <path d="M9 11h6l-1 9h-4z"/>
+      <path d="M10 14l-2 3M14 14l2 3"/>
     </symbol>
-    <symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M7 4h10v6a5 5 0 0 1-10 0z"/>
-      <path d="M7 6H4a2 2 0 0 0 0 4h3M17 6h3a2 2 0 0 1 0 4h-3"/>
-      <path d="M10 15c0 2-1 3-1 5h6c0-2-1-3-1-5"/>
-      <path d="M8 20h8"/>
+    <symbol id="k-umbrella" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 12a9 9 0 0 1 18 0z"/>
+      <path d="M12 3v9"/>
+      <path d="M12 20a2 2 0 1 1-4 0"/>
     </symbol>
-    <symbol id="i-puzzle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 4h6v3a2 2 0 0 0 4 0V4h6v6h-3a2 2 0 0 0 0 4h3v6h-6v-3a2 2 0 0 0-4 0v3H4v-6h3a2 2 0 0 0 0-4H4z"/>
+    <symbol id="k-directions" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M16 8l-5 2-2 5 5-2z"/>
     </symbol>
-    <symbol id="i-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 21c-4 0-7-3-7-7 0-3 2-5 3-5 0 2 1 3 2 3 0-4 2-7 6-9 0 4 5 6 5 11 0 4-3 7-7 7z"/>
+    <symbol id="k-photo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="6" width="18" height="14" rx="2"/>
+      <path d="M8 6l1.5-2h5L16 6"/>
+      <circle cx="12" cy="13" r="3.5"/>
     </symbol>
-    <symbol id="i-sparkle" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-      <path d="M12 3l1.5 5L19 9l-5.5 1L12 16l-1.5-6L5 9l5.5-1z"/>
+    <symbol id="k-pet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="6" cy="10" r="1.8"/>
+      <circle cx="10" cy="6" r="1.8"/>
+      <circle cx="14" cy="6" r="1.8"/>
+      <circle cx="18" cy="10" r="1.8"/>
+      <path d="M8 18a4 4 0 0 1 8 0c0 2-2 2-4 2s-4 0-4-2z"/>
     </symbol>
-    <symbol id="i-bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 10v10M10 4v16M16 14v6M22 8v12"/>
+    <symbol id="k-reach" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M11 21V10M11 10l-3-3M11 10l-3 3M11 10h4l-1-7"/>
+      <rect x="14" y="2" width="7" height="3"/>
+    </symbol>
+    <symbol id="k-translate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 6h7M7 4v2M4 11c0-3 7-3 7 0 0 2-3 3-5 5h5"/>
+      <path d="M13 14l3-7 3 7M14.4 11.5h3.2"/>
+    </symbol>
+    <symbol id="k-charger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="7" width="16" height="10" rx="2"/>
+      <path d="M19 11h2v2h-2"/>
+      <path d="M9 9l-2 3h3l-2 3"/>
+    </symbol>
+    <symbol id="k-other" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l2.8 2.8M15.7 15.7l2.8 2.8M5.5 18.5l2.8-2.8M15.7 8.3l2.8-2.8"/>
     </symbol>
   </defs>
 </svg>
 
-<!-- ======================================================================
-topbar
+<!-- =====================================================================
+sign-in screen (shown when no auth session)
 ====================================================================== -->
-<header class="topbar">
-  <div class="brand">
-    <span class="brand-mark"><svg><use href="#i-brand"/></svg></span>
-    <div>
-      <div class="brand-name">お絵かきロジック</div>
-      <div class="brand-tag">数字から絵を解く</div>
+<div class="signin-host" id="signin-screen" hidden>
+  <div class="signin">
+    <div class="logo"><svg><use href="#i-brand"/></svg></div>
+    <h2>たすけて</h2>
+    <p class="lead">ご近所の些細な困りごとを、些細なお金で、その場で解決する。続けるにはメールで認証。</p>
+    <div class="input-row">
+      <label class="field">メールアドレス</label>
+      <input type="email" id="signin-email" placeholder="you@example.com" autocomplete="email" />
     </div>
-  </div>
-  <div class="top-controls">
-    <span class="pill" title="今日の連続日数">
-      <svg><use href="#i-flame"/></svg>
-      <b id="streak-pill">0</b>日
-    </span>
-    <span class="pill" title="クリア済み">
-      <svg><use href="#i-trophy"/></svg>
-      <b id="cleared-pill">0</b>/<span id="cleared-total">0</span>
-    </span>
-  </div>
-</header>
-
-<main>
-
-<!-- hero -->
-<section class="hero">
-  <div class="eyebrow">A LOGIC PAINT PUZZLE</div>
-  <h1 class="title">数字をヒントに、<span class="accent">マスを塗って絵を完成させる。</span></h1>
-  <p class="lead">行と列の数字は、塗りつぶす連続マス数。たとえば「3 2 1」なら「3マス連続 → 隙間 → 2マス連続 → 隙間 → 1マス」。論理だけで答えは一つに決まる。</p>
-</section>
-
-<!-- board -->
-<section class="board">
-  <div class="board-head">
-    <div class="puzzle-meta">
-      <span class="puzzle-title" id="title">…</span>
-      <span class="sep">·</span>
-      <span class="puzzle-size" id="size">…</span>
-      <span class="puzzle-diff" id="diff-tag">…</span>
-    </div>
-    <span class="clock" id="clock">
-      <svg><use href="#i-clock"/></svg>
-      <span id="clock-text">00:00</span>
-    </span>
-  </div>
-  <div class="grid-wrap">
-    <div class="grid" id="grid" role="grid" aria-label="puzzle grid"></div>
-  </div>
-  <div class="toolbar">
-    <button class="tool" id="tool-fill" onclick="setTool('fill')">
-      <svg><use href="#i-fill"/></svg> 塗る
+    <button class="btn block" id="signin-btn" onclick="sendMagicLink()">
+      <svg><use href="#i-mail"/></svg> マジックリンクを送る
     </button>
-    <button class="tool" id="tool-mark" onclick="setTool('mark')">
-      <svg><use href="#i-mark"/></svg> 印
-    </button>
-    <button class="tool" id="tool-hint" onclick="askHint()">
-      <svg><use href="#i-hint"/></svg> ヒント
-    </button>
-    <button class="tool" id="tool-reset" onclick="resetGrid()">
-      <svg><use href="#i-reset"/></svg> リセット
-    </button>
-    <span class="spacer"></span>
-    <span class="progress">塗り <b id="prog-text">0/0</b></span>
-  </div>
-</section>
-
-<!-- rail -->
-<aside class="rail">
-
-  <div class="panel">
-    <h2><svg><use href="#i-puzzle"/></svg> パズル一覧</h2>
-    <div class="difficulty-tabs" id="diff-tabs">
-      <button class="active" data-diff="all">全部</button>
-      <button data-diff="tiny">小</button>
-      <button data-diff="easy">易</button>
-      <button data-diff="medium">中</button>
-    </div>
-    <div class="picker" id="picker"></div>
-  </div>
-
-  <div class="panel">
-    <h2><svg><use href="#i-bars"/></svg> 成績</h2>
-    <p class="help">ベストタイムはこのブラウザにだけ保存。</p>
-    <div class="stat-grid">
-      <div class="stat">
-        <div class="label">このパズルのベスト</div>
-        <div class="value" id="stat-best">—</div>
-      </div>
-      <div class="stat">
-        <div class="label">クリア合計</div>
-        <div class="value" id="stat-cleared">0<small></small></div>
-      </div>
-      <div class="stat">
-        <div class="label">通算プレイ時間</div>
-        <div class="value" id="stat-total-time">0<small>秒</small></div>
-      </div>
-      <div class="stat">
-        <div class="label">連続記録</div>
-        <div class="value" id="stat-streak">0<small>日</small></div>
-      </div>
-    </div>
-  </div>
-
-  <div class="panel">
-    <h2><svg><use href="#i-sparkle"/></svg> 遊び方</h2>
-    <p class="help" style="line-height: 1.6">
-      ・タップで塗る / ドラッグで連続塗り<br/>
-      ・「印」モードで×印 (空マス確定)<br/>
-      ・「ヒント」は次に確定するマスを1つ教える<br/>
-      ・行や列の数字を順番にヒントとして使う
+    <p style="margin-top:14px; color: var(--muted); font-size: 11.5px">
+      送られてくるメールのリンクをタップすると戻ってきます。<br/>
+      ボタンを押した時点でこのアプリの利用規約に同意したものとみなします。
     </p>
   </div>
-
-</aside>
-
-</main>
-
-<div class="toasts" id="toasts"></div>
-<div class="kbd-hint">
-  <kbd>F</kbd> 塗る <kbd>X</kbd> 印 <kbd>H</kbd> ヒント <kbd>R</kbd> リセット
 </div>
 
 <!-- =====================================================================
-script
+main app shell
 ====================================================================== -->
+<div id="app" hidden>
+
+  <!-- topbar -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark"><svg><use href="#i-brand"/></svg></span>
+      <div>
+        <div class="brand-name">たすけて</div>
+        <div class="brand-tag">ご近所の些細なお願い</div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="icon-btn" id="loc-refresh" onclick="refreshLocation()" title="現在地を再取得">
+        <svg><use href="#i-pin"/></svg>
+      </button>
+      <button class="icon-btn" id="feed-refresh" onclick="refreshFeed(true)" title="再読み込み">
+        <svg><use href="#i-refresh"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ============= view: home (feed) ============= -->
+    <section class="view show" data-view="home">
+      <div class="loc-strip" id="loc-strip">
+        <span class="pin"><svg><use href="#i-pin"/></svg></span>
+        <span class="label" id="loc-label">現在地を取得中…</span>
+        <span class="coords" id="loc-coords"></span>
+      </div>
+
+      <div class="card" style="display:flex;align-items:center;gap:10px;padding:10px 12px">
+        <label style="flex:1;font-size:12px;color:var(--muted);margin:0">範囲</label>
+        <input type="range" id="radius-slider" min="200" max="5000" step="100" value="2000"
+               style="flex:2.5;accent-color:var(--accent)" oninput="onRadiusChange()" />
+        <span class="v" id="radius-v" style="font-family:'Inter',monospace;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;font-size:13px;min-width:54px;text-align:right">2.0km</span>
+      </div>
+
+      <div id="feed-list" style="display:flex;flex-direction:column;gap:10px">
+        <!-- skeletons before first load -->
+        <div class="req-card">
+          <div class="skeleton" style="height:40px;width:40px;border-radius:10px"></div>
+          <div>
+            <div class="skeleton" style="height:12px;width:60%;margin-bottom:8px"></div>
+            <div class="skeleton" style="height:14px;width:90%"></div>
+          </div>
+        </div>
+        <div class="req-card">
+          <div class="skeleton" style="height:40px;width:40px;border-radius:10px"></div>
+          <div>
+            <div class="skeleton" style="height:12px;width:50%;margin-bottom:8px"></div>
+            <div class="skeleton" style="height:14px;width:80%"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============= view: post ============= -->
+    <section class="view" data-view="post">
+      <div class="card">
+        <h3 class="card-title">どんな困りごとですか?</h3>
+        <p class="card-help">該当する種類を選んでください。「その他」は説明が必要です。</p>
+        <div class="kind-grid" id="kind-grid" style="margin-top:10px"></div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">いくら払いますか?</h3>
+        <p class="card-help">気持ち程度の少額で OK。最大1000円まで。</p>
+        <div class="pills" id="bounty-pills" style="margin-top:10px">
+          <button class="pill" data-yen="0">0円</button>
+          <button class="pill active" data-yen="100">100円</button>
+          <button class="pill" data-yen="200">200円</button>
+          <button class="pill" data-yen="300">300円</button>
+          <button class="pill" data-yen="500">500円</button>
+          <button class="pill" data-yen="1000">1000円</button>
+        </div>
+      </div>
+
+      <div class="card" id="desc-card">
+        <h3 class="card-title">補足説明 <span id="desc-required" style="color:var(--danger);display:none">(必須)</span></h3>
+        <p class="card-help">どう困っているか、相手がわかるように一言。</p>
+        <textarea id="post-desc" placeholder="例: 新幹線で作業したいので席を譲ってほしい" maxlength="280" style="margin-top:8px"></textarea>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">いつまでに?</h3>
+        <p class="card-help">この時間を過ぎると自動的に取り下げられます。</p>
+        <div class="pills" style="margin-top:10px" id="duration-pills">
+          <button class="pill" data-min="15">15分</button>
+          <button class="pill active" data-min="30">30分</button>
+          <button class="pill" data-min="60">1時間</button>
+          <button class="pill" data-min="120">2時間</button>
+          <button class="pill" data-min="240">4時間</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">場所</h3>
+        <div class="loc-strip" style="margin-top:8px">
+          <span class="pin"><svg><use href="#i-pin"/></svg></span>
+          <span class="label" id="post-loc-label">現在地から投稿</span>
+          <span class="coords" id="post-loc-coords"></span>
+          <button onclick="refreshLocation(true)">再取得</button>
+        </div>
+        <p class="card-help" style="margin-top:8px">通知は同じエリア (半径2km目安) の登録ユーザーに届きます。</p>
+      </div>
+
+      <button class="btn block good" id="post-btn" onclick="submitRequest()">
+        <svg><use href="#i-check"/></svg> 困りごとを投稿する
+      </button>
+    </section>
+
+    <!-- ============= view: inbox (yarinashi) ============= -->
+    <section class="view" data-view="inbox">
+      <div class="seg" id="inbox-tabs">
+        <button class="active" data-tab="mine">投稿した</button>
+        <button data-tab="helping">引き受けた</button>
+      </div>
+      <div id="inbox-list" style="display:flex;flex-direction:column;gap:10px"></div>
+    </section>
+
+    <!-- ============= view: profile ============= -->
+    <section class="view" data-view="profile">
+      <div class="card">
+        <h3 class="card-title">プロフィール</h3>
+        <label class="field" style="margin-top:10px">表示名</label>
+        <input type="text" id="prof-name" maxlength="32" />
+        <button class="btn sm ghost" style="margin-top:8px" onclick="saveProfile()">
+          <svg><use href="#i-check"/></svg> 更新
+        </button>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title">信用スコア</h3>
+        <p class="card-help">最初は100。完了取引ごとに +1、悪い対応で減点。</p>
+        <div class="stat-grid" style="margin-top:10px">
+          <div class="stat">
+            <div class="label">信用スコア</div>
+            <div class="v" id="prof-trust">100</div>
+          </div>
+          <div class="stat">
+            <div class="label">完了取引</div>
+            <div class="v" id="prof-completed">0<small></small></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3 class="card-title"><svg style="width:14px;height:14px;vertical-align:-2px" stroke="currentColor" fill="none" stroke-width="1.8"><use href="#i-shield"/></svg> 安全について</h3>
+        <p class="card-help">
+          ・1度に開ける依頼は最大3件まで。<br/>
+          ・受け取り側・依頼者の両方が完了確認した時のみ取引成立。<br/>
+          ・気になる相手はブロック、不快な相手は通報できます。<br/>
+          ・場所情報は依頼を出した時にのみ記録されます。
+        </p>
+      </div>
+
+      <button class="btn block ghost" onclick="signOut()">
+        <svg><use href="#i-logout"/></svg> ログアウト
+      </button>
+    </section>
+
+  </main>
+
+  <!-- bottom nav -->
+  <nav class="nav" id="nav">
+    <button class="active" data-view="home" onclick="goView('home')">
+      <svg><use href="#i-home"/></svg>
+      <span>近くで困った</span>
+    </button>
+    <button data-view="post" onclick="goView('post')">
+      <svg><use href="#i-plus"/></svg>
+      <span>お願い</span>
+    </button>
+    <button data-view="inbox" onclick="goView('inbox')">
+      <svg><use href="#i-inbox"/></svg>
+      <span>やりとり</span>
+      <span class="badge" id="inbox-badge" hidden></span>
+    </button>
+    <button data-view="profile" onclick="goView('profile')">
+      <svg><use href="#i-user"/></svg>
+      <span>わたし</span>
+    </button>
+  </nav>
+
+</div>
+
+<div class="toasts" id="toasts"></div>
+
 <script>
 "use strict";
 
-/* ============================================================ icon util */
-function svgUse(id, size = 16) {
-  return `<svg width="${size}" height="${size}" aria-hidden="true"><use href="#${id}"/></svg>`;
-}
+/* =====================================================================
+ * Supabase
+ * ===================================================================== */
+const cfg = window.TASUKETE_CONFIG;
+const supa = supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  db:   { schema: cfg.schema },
+});
 
-/* ============================================================ storage */
-const LS = {
-  CURRENT: "oekaki.current",
-  GRID:    "oekaki.grid",       // per-puzzle state
-  STATS:   "oekaki.stats",      // global stats
-  CLEARED: "oekaki.cleared",    // set of cleared puzzle ids
-  STREAK:  "oekaki.streak",
-};
-
-function loadJSON(key, fallback) {
-  try {
-    const raw = localStorage.getItem(key);
-    return raw ? JSON.parse(raw) : fallback;
-  } catch { return fallback; }
-}
-function saveJSON(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
-}
-
-/* ============================================================ state */
-const Cell = { UNKNOWN: -1, EMPTY: 0, FILLED: 1 };
-
+/* =====================================================================
+ * state
+ * ===================================================================== */
 const state = {
-  catalog: [],
-  filter: "all",
-  puzzle: null,
-  cells: [],            // 2D array of Cell.*
-  tool: "fill",         // "fill" | "mark"
-  startedAt: null,
-  elapsedMs: 0,
-  paused: false,
-  won: false,
-  hintCell: null,       // [r, c] of last-hinted cell (for pulse animation)
+  session: null,
+  profile: null,
+  location: null,       // { lat, lng, label?, acc? }
+  radiusM: cfg.defaultRadiusM,
+  feed: [],
+  inboxMine: [],
+  inboxHelping: [],
+  postKind: 'seat',
+  postBounty: 100,
+  postDuration: 30,
+  inboxTab: 'mine',
 };
 
-/* ============================================================ networking */
-async function api(method, path, body) {
-  const opts = { method, headers: { "Content-Type": "application/json" } };
-  if (body !== undefined) opts.body = JSON.stringify(body);
-  const res = await fetch(path, opts);
-  const txt = await res.text();
-  let data; try { data = JSON.parse(txt); } catch { data = txt; }
-  if (!res.ok) throw new Error((data && data.error) || txt || `HTTP ${res.status}`);
-  return data;
+const KIND_LABEL = {
+  seat: '席を譲って', luggage: '荷物を持って', toilet: 'トイレ順番',
+  child: '子供を見て', umbrella: '傘を貸して', directions: '道案内',
+  photo: '写真撮影', pet: 'ペット見守り', reach: '棚から取って',
+  translate: '通訳して', charger: '充電貸して', other: 'その他',
+};
+const KIND_ICON = {
+  seat: 'k-seat', luggage: 'k-luggage', toilet: 'k-toilet',
+  child: 'k-child', umbrella: 'k-umbrella', directions: 'k-directions',
+  photo: 'k-photo', pet: 'k-pet', reach: 'k-reach',
+  translate: 'k-translate', charger: 'k-charger', other: 'k-other',
+};
+const KIND_ORDER = [
+  'seat', 'luggage', 'toilet', 'child',
+  'umbrella', 'directions', 'translate',
+  'photo', 'charger', 'pet', 'reach', 'other',
+];
+
+/* =====================================================================
+ * helpers
+ * ===================================================================== */
+function $(sel) { return document.querySelector(sel); }
+function $$(sel) { return [...document.querySelectorAll(sel)]; }
+function el(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; }
+function escapeHTML(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]); }
+function svgRef(id, size = 16) { return `<svg width="${size}" height="${size}" aria-hidden="true"><use href="#${id}"/></svg>`; }
+
+function toast(msg, kind = '') {
+  const t = el(`<div class="toast ${kind}">${kind ? svgRef(kind === 'err' ? 'i-x' : 'i-check', 14) : ''}<span>${escapeHTML(msg)}</span></div>`);
+  $('#toasts').appendChild(t);
+  setTimeout(() => t.remove(), 3000);
 }
 
-/* ============================================================ toasts */
-function toast(msg, kind = "info") {
-  const el = document.createElement("div");
-  el.className = "toast " + kind;
-  const icon = kind === "err" ? "i-x" : kind === "ok" ? "i-check" : "i-sparkle";
-  el.innerHTML = svgUse(icon, 14) + `<span>${escapeHTML(msg)}</span>`;
-  document.getElementById("toasts").appendChild(el);
-  setTimeout(() => el.remove(), 2800);
+function formatDistance(m) {
+  if (m == null) return '';
+  if (m < 1000) return `${Math.round(m)}m`;
+  return `${(m / 1000).toFixed(1)}km`;
 }
-function escapeHTML(s) {
-  return String(s ?? "").replace(/[&<>"']/g,
-    c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-}
-
-/* ============================================================ time format */
-function formatMs(ms) {
-  if (!Number.isFinite(ms) || ms < 0) ms = 0;
-  const total = Math.floor(ms / 1000);
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+function formatTimeLeft(iso) {
+  const ms = new Date(iso).getTime() - Date.now();
+  if (ms <= 0) return '期限切れ';
+  const min = Math.floor(ms / 60000);
+  if (min < 60) return `あと${min}分`;
+  return `あと${Math.floor(min / 60)}時間${min % 60}分`;
 }
 
-/* ============================================================ catalog */
-async function loadCatalog() {
-  const items = await api("GET", "/api/puzzles");
-  state.catalog = items;
-  document.getElementById("cleared-total").textContent = items.length;
-  renderPicker();
-}
-
-function clearedSet() {
-  return new Set(loadJSON(LS.CLEARED, []));
-}
-function markCleared(id) {
-  const s = clearedSet();
-  s.add(id);
-  saveJSON(LS.CLEARED, [...s]);
-  refreshTopStats();
-}
-
-function refreshTopStats() {
-  const s = clearedSet();
-  document.getElementById("cleared-pill").textContent = s.size;
-  document.getElementById("stat-cleared").innerHTML =
-    `${s.size}<small> / ${state.catalog.length}</small>`;
-  // Streak
-  const streak = loadJSON(LS.STREAK, { current: 0, last: null });
-  document.getElementById("streak-pill").textContent = streak.current;
-  document.getElementById("stat-streak").innerHTML = `${streak.current}<small>日</small>`;
-  // Total time
-  const stats = loadJSON(LS.STATS, { total_ms: 0 });
-  const sec = Math.floor((stats.total_ms || 0) / 1000);
-  document.getElementById("stat-total-time").innerHTML =
-    sec < 3600 ? `${sec}<small>秒</small>` :
-    `${Math.floor(sec/60)}<small>分</small>`;
-}
-
-/* ============================================================ picker */
-function renderPicker() {
-  const cleared = clearedSet();
-  const visible = state.filter === "all"
-    ? state.catalog
-    : state.catalog.filter(p => p.difficulty === state.filter);
-  const target = document.getElementById("picker");
-  target.innerHTML = visible.map(p => {
-    const isActive = state.puzzle && state.puzzle.id === p.id;
-    const isCleared = cleared.has(p.id);
-    return `
-      <div class="pick-item ${isActive ? "active" : ""}" onclick="loadPuzzle('${p.id}')">
-        <div class="pick-thumb">${thumbnailSvg(p)}</div>
-        <div>
-          <div class="pick-name">${escapeHTML(p.title)}</div>
-          <div class="pick-sub">${p.rows}×${p.cols} · ${diffLabel(p.difficulty)}</div>
-        </div>
-        <div class="pick-state ${isCleared ? "done" : ""}">
-          ${isCleared ? svgUse("i-check", 11) + bestTimeFor(p.id) : ""}
-        </div>
-      </div>`;
-  }).join("");
-}
-
-function bestTimeFor(id) {
-  const stats = loadJSON(LS.STATS, {});
-  const best = stats.best && stats.best[id];
-  return best ? `<span style="margin-left:3px">${formatMs(best)}</span>` : "";
-}
-
-function diffLabel(d) {
-  return { tiny: "小", easy: "易", medium: "中", hard: "難" }[d] || d;
-}
-
-function thumbnailSvg(p) {
-  // Render the puzzle silhouette WITHOUT giving away exact solution.
-  // We don't have the solution at this point, so we show clue-density:
-  // a tiny grid where each cell is darkened by the sum of clue lengths.
-  const cells = Math.max(p.rows, p.cols);
-  const cs = 28;
-  const sq = Math.floor((cs - 2) / cells);
-  let svg = `<svg width="${cs}" height="${cs}" viewBox="0 0 ${cs} ${cs}">`;
-  svg += `<rect x="0" y="0" width="${cs}" height="${cs}" fill="#fafaf6"/>`;
-  // Stripes from row clues — total fill density
-  for (let r = 0; r < p.rows; r++) {
-    const sum = (p.row_clues[r] || []).reduce((a, b) => a + b, 0);
-    const density = sum / p.cols;
-    const w = Math.round(density * (cs - 2));
-    svg += `<rect x="1" y="${1 + r * sq}" width="${w}" height="${sq}" fill="#1a1f2c" opacity="0.45"/>`;
+/* =====================================================================
+ * auth
+ * ===================================================================== */
+async function sendMagicLink() {
+  const email = $('#signin-email').value.trim();
+  if (!email || !email.includes('@')) {
+    toast('メールアドレスを入れてください', 'err');
+    return;
   }
-  svg += `</svg>`;
-  return svg;
+  const btn = $('#signin-btn');
+  btn.disabled = true;
+  btn.innerHTML = svgRef('i-spinner', 16) + ' 送信中…';
+  const { error } = await supa.auth.signInWithOtp({
+    email,
+    options: { emailRedirectTo: window.location.origin + '/' },
+  });
+  btn.disabled = false;
+  btn.innerHTML = svgRef('i-mail', 16) + ' マジックリンクを送る';
+  if (error) {
+    toast('送信失敗: ' + error.message, 'err');
+    return;
+  }
+  toast('メールを送りました。リンクをタップ', 'ok');
 }
 
-document.getElementById("diff-tabs").addEventListener("click", (ev) => {
-  const btn = ev.target.closest("button[data-diff]");
-  if (!btn) return;
-  state.filter = btn.dataset.diff;
-  for (const b of document.querySelectorAll("#diff-tabs button")) {
-    b.classList.toggle("active", b === btn);
-  }
-  renderPicker();
-});
-
-/* ============================================================ board render */
-function emptyCells(rows, cols) {
-  return Array.from({length: rows}, () => Array(cols).fill(Cell.UNKNOWN));
+async function signOut() {
+  await supa.auth.signOut();
+  state.session = null;
+  state.profile = null;
+  showSignIn();
 }
 
-function gridKey(puzzleId) { return `${LS.GRID}:${puzzleId}`; }
-
-async function loadPuzzle(id) {
-  // Save current state first.
-  saveCurrent();
-  const fresh = await api("GET", `/api/puzzles/${encodeURIComponent(id)}`);
-  state.puzzle = fresh;
-  // Restore cells from localStorage if present, else start fresh.
-  const saved = loadJSON(gridKey(id), null);
-  state.cells = saved && saved.cells && saved.cells.length === fresh.rows
-    ? saved.cells.map(r => r.slice())
-    : emptyCells(fresh.rows, fresh.cols);
-  state.elapsedMs = (saved && saved.elapsed_ms) || 0;
-  state.startedAt = null;
-  state.paused = !!(saved && saved.completed);
-  state.won = !!(saved && saved.completed);
-  state.hintCell = null;
-  saveJSON(LS.CURRENT, id);
-  renderBoard();
-  renderPicker();
-  startTimerIfNeeded(false);
+async function onAuthStateChange(session) {
+  state.session = session;
+  if (!session) {
+    showSignIn();
+    return;
+  }
+  // Ensure a profile row exists.
+  const { data, error } = await supa.rpc('ensure_profile', { p_display_name: null });
+  if (error) {
+    toast('プロフィール初期化失敗: ' + error.message, 'err');
+    return;
+  }
+  state.profile = data;
+  showApp();
+  await refreshLocation();
+  await refreshFeed();
+  await refreshInbox();
 }
 
-function renderBoard() {
-  const p = state.puzzle;
-  if (!p) return;
-  document.getElementById("title").textContent = p.title;
-  document.getElementById("size").textContent = `${p.rows}×${p.cols}`;
-  const tag = document.getElementById("diff-tag");
-  tag.textContent = diffLabel(p.difficulty);
-  tag.className = "puzzle-diff " + p.difficulty;
-
-  // Compute clue-column-height (max number of row-clue entries) and
-  // clue-row-width (max number of column-clue entries) so the corner
-  // grid cell sizes properly.
-  const maxRowClues = Math.max(1, ...p.row_clues.map(c => c.length));
-  const maxColClues = Math.max(1, ...p.col_clues.map(c => c.length));
-
-  const grid = document.getElementById("grid");
-  grid.style.gridTemplateColumns =
-    `auto repeat(${p.cols}, var(--cell))`;
-  grid.style.gridTemplateRows =
-    `auto repeat(${p.rows}, var(--cell))`;
-
-  let html = `<div class="corner"></div>`;
-  // column clues
-  for (let c = 0; c < p.cols; c++) {
-    const clue = p.col_clues[c];
-    const major = (c % 5 === 4) && c < p.cols - 1 ? " major-right" : "";
-    html += `<div class="ccol${major}" data-col="${c}">`;
-    if (!clue.length) html += `<span class="satisfied">·</span>`;
-    else for (const n of clue) html += `<span data-n="${n}">${n}</span>`;
-    html += `</div>`;
-  }
-  // body rows
-  for (let r = 0; r < p.rows; r++) {
-    const clue = p.row_clues[r];
-    const majorB = (r % 5 === 4) && r < p.rows - 1 ? " major-bottom" : "";
-    html += `<div class="crow${majorB}" data-row="${r}">`;
-    if (!clue.length) html += `<span class="satisfied">·</span>`;
-    else for (const n of clue) html += `<span data-n="${n}">${n}</span>`;
-    html += `</div>`;
-    for (let c = 0; c < p.cols; c++) {
-      const v = state.cells[r][c];
-      const major = ((c % 5 === 4) && c < p.cols - 1 ? " major-right" : "") +
-                    ((r % 5 === 4) && r < p.rows - 1 ? " major-bottom" : "");
-      html += `<div class="cell${major}" data-v="${v}" data-r="${r}" data-c="${c}">
-        <svg class="glyph"><use href="#i-mark"/></svg>
-      </div>`;
-    }
-  }
-  grid.innerHTML = html;
-  updateClueSatisfaction();
-  updateProgress();
-  setupGridInput();
-  setTool(state.tool);  // sync button styles
+/* =====================================================================
+ * view routing
+ * ===================================================================== */
+function showSignIn() {
+  $('#signin-screen').hidden = false;
+  $('#app').hidden = true;
+}
+function showApp() {
+  $('#signin-screen').hidden = true;
+  $('#app').hidden = false;
+}
+function goView(name) {
+  $$('.view').forEach(v => v.classList.toggle('show', v.dataset.view === name));
+  $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
+  if (name === 'home')    refreshFeed();
+  if (name === 'inbox')   refreshInbox();
+  if (name === 'profile') renderProfile();
+  if (name === 'post')    renderPostKindGrid();
 }
 
-/* ============================================================ clue striking */
-function updateClueSatisfaction() {
-  const p = state.puzzle;
-  if (!p) return;
-  for (let r = 0; r < p.rows; r++) {
-    const runs = computeRuns(state.cells[r]);
-    markSatisfied(`.crow[data-row="${r}"]`, p.row_clues[r], runs);
+/* =====================================================================
+ * geolocation
+ * ===================================================================== */
+async function refreshLocation(forPost = false) {
+  $('#loc-label').textContent = '現在地を取得中…';
+  if (!('geolocation' in navigator)) {
+    $('#loc-label').textContent = '位置情報が使えません';
+    return;
   }
-  for (let c = 0; c < p.cols; c++) {
-    const col = state.cells.map(row => row[c]);
-    const runs = computeRuns(col);
-    markSatisfied(`.ccol[data-col="${c}"]`, p.col_clues[c], runs);
-  }
-}
-function computeRuns(line) {
-  const out = [];
-  let run = 0;
-  for (const v of line) {
-    if (v === Cell.FILLED) run++;
-    else { if (run) out.push(run); run = 0; }
-  }
-  if (run) out.push(run);
-  return out;
-}
-function markSatisfied(selector, clueList, runs) {
-  const host = document.querySelector(selector);
-  if (!host) return;
-  const spans = [...host.querySelectorAll("span[data-n]")];
-  if (!spans.length) return;
-  // A clue is "satisfied" if the player's runs exactly match it as a prefix
-  // (so [3, 2, 1] partially crossed off as [3, 2] strikes the first two).
-  // Strict equality at the same index.
-  let okPrefix = 0;
-  for (let i = 0; i < clueList.length && i < runs.length; i++) {
-    if (clueList[i] === runs[i]) okPrefix++;
-    else break;
-  }
-  // If full exact match, all spans struck.
-  const fullMatch = clueList.length === runs.length &&
-    clueList.every((v, i) => v === runs[i]);
-  spans.forEach((s, i) => {
-    s.classList.toggle("satisfied",
-      fullMatch || (i < okPrefix && i < clueList.length));
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        state.location = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+          acc: Math.round(pos.coords.accuracy),
+        };
+        const c = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
+        $('#loc-label').textContent = '現在地';
+        $('#loc-coords').textContent = c;
+        $('#post-loc-label').textContent = '現在地から投稿';
+        $('#post-loc-coords').textContent = c;
+        if (!forPost) refreshFeed();
+        resolve();
+      },
+      (err) => {
+        $('#loc-label').textContent = '位置情報を許可してください';
+        toast('位置情報が取れない: ' + err.message, 'err');
+        resolve();
+      },
+      { enableHighAccuracy: true, timeout: 8000, maximumAge: 30000 }
+    );
   });
 }
 
-/* ============================================================ progress */
-function updateProgress() {
-  const p = state.puzzle;
-  if (!p) return;
-  let totalFilled = 0;
-  for (const row of p.row_clues) totalFilled += row.reduce((a, b) => a + b, 0);
-  let playerFilled = 0;
-  for (const row of state.cells) for (const v of row) if (v === Cell.FILLED) playerFilled++;
-  document.getElementById("prog-text").textContent = `${playerFilled}/${totalFilled}`;
+function onRadiusChange() {
+  state.radiusM = +$('#radius-slider').value;
+  $('#radius-v').textContent = state.radiusM >= 1000
+    ? `${(state.radiusM / 1000).toFixed(1)}km`
+    : `${state.radiusM}m`;
+  refreshFeed();
 }
 
-/* ============================================================ pointer input */
-let drag = null;   // { value: Cell.*, lastR, lastC }
-
-function setupGridInput() {
-  const grid = document.getElementById("grid");
-  grid.addEventListener("pointerdown", onPointerDown);
-  grid.addEventListener("pointermove", onPointerMove);
-  document.addEventListener("pointerup", onPointerUp);
-  grid.addEventListener("contextmenu", e => e.preventDefault());
-}
-
-function cellAt(target) {
-  const el = target.closest(".cell");
-  if (!el) return null;
-  return { r: +el.dataset.r, c: +el.dataset.c, el };
-}
-
-function onPointerDown(ev) {
-  if (state.won) return;
-  const cell = cellAt(ev.target);
-  if (!cell) return;
-  ev.preventDefault();
-  ev.target.setPointerCapture && ev.target.setPointerCapture(ev.pointerId);
-
-  // Determine the value we will toggle TO based on current state.
-  const current = state.cells[cell.r][cell.c];
-  // Right-click (or button === 2) flips behavior: temporarily use the
-  // OTHER tool for this gesture.
-  const tool = (ev.button === 2 || ev.shiftKey) ? otherTool(state.tool) : state.tool;
-  let nextValue;
-  if (tool === "fill") {
-    nextValue = current === Cell.FILLED ? Cell.UNKNOWN : Cell.FILLED;
-  } else {
-    nextValue = current === Cell.EMPTY ? Cell.UNKNOWN : Cell.EMPTY;
-  }
-  drag = { value: nextValue, lastR: cell.r, lastC: cell.c, axis: null };
-  applyCell(cell.r, cell.c, nextValue);
-}
-
-function onPointerMove(ev) {
-  if (!drag) return;
-  const cell = cellAt(document.elementFromPoint(ev.clientX, ev.clientY));
-  if (!cell) return;
-  if (cell.r === drag.lastR && cell.c === drag.lastC) return;
-  // Lock to row OR column axis after first move, to prevent diagonal drags
-  // from looking sloppy.
-  if (drag.axis === null) {
-    drag.axis = (cell.r === drag.lastR) ? "row" : "col";
-  }
-  if (drag.axis === "row" && cell.r !== drag.lastR) return;
-  if (drag.axis === "col" && cell.c !== drag.lastC) return;
-  applyCell(cell.r, cell.c, drag.value);
-  drag.lastR = cell.r; drag.lastC = cell.c;
-}
-
-function onPointerUp() {
-  if (drag) {
-    drag = null;
-    saveCurrent();
-    checkComplete();
-  }
-}
-
-function otherTool(t) { return t === "fill" ? "mark" : "fill"; }
-
-function applyCell(r, c, value) {
-  if (state.cells[r][c] === value) return;
-  state.cells[r][c] = value;
-  const el = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
-  if (el) {
-    el.dataset.v = String(value);
-    el.removeAttribute("data-mistake");
-  }
-  updateClueSatisfaction();
-  updateProgress();
-  startTimerIfNeeded(true);
-}
-
-/* ============================================================ tools */
-function setTool(t) {
-  state.tool = t;
-  document.getElementById("tool-fill").classList.toggle("active", t === "fill");
-  document.getElementById("tool-mark").classList.toggle("active", t === "mark");
-}
-
-function resetGrid() {
-  if (!state.puzzle) return;
-  if (!state.won && !confirm("リセットする?")) return;
-  state.cells = emptyCells(state.puzzle.rows, state.puzzle.cols);
-  state.elapsedMs = 0;
-  state.startedAt = null;
-  state.paused = false;
-  state.won = false;
-  state.hintCell = null;
-  saveCurrent();
-  renderBoard();
-  toast("リセットした", "ok");
-}
-
-async function askHint() {
-  if (!state.puzzle || state.won) return;
-  startTimerIfNeeded(true);
-  try {
-    const r = await api("POST", "/api/hint", {
-      puzzle_id: state.puzzle.id,
-      cells: state.cells,
-    });
-    if (!r.hint) {
-      toast("論理だけでは進めない。推測してみて。", "info");
-      return;
-    }
-    const { r: hr, c: hc, value } = r.hint;
-    applyCell(hr, hc, value);
-    saveCurrent();
-    // Pulse the cell.
-    const el = document.querySelector(`.cell[data-r="${hr}"][data-c="${hc}"]`);
-    if (el) {
-      el.classList.remove("hint-pulse");
-      void el.offsetWidth;  // restart animation
-      el.classList.add("hint-pulse");
-    }
-    checkComplete();
-  } catch (e) { toast(e.message, "err"); }
-}
-
-/* ============================================================ timer */
-let timerHandle = null;
-function startTimerIfNeeded(userAction) {
-  if (state.won) return;
-  if (!state.startedAt) {
-    state.startedAt = Date.now() - state.elapsedMs;
-  }
-  if (timerHandle === null) {
-    timerHandle = setInterval(tickClock, 500);
-  }
-  if (userAction) document.getElementById("clock").classList.remove("paused");
-}
-
-function tickClock() {
-  if (!state.startedAt || state.won) return;
-  state.elapsedMs = Date.now() - state.startedAt;
-  document.getElementById("clock-text").textContent = formatMs(state.elapsedMs);
-}
-
-function stopTimer() {
-  clearInterval(timerHandle);
-  timerHandle = null;
-}
-
-document.addEventListener("visibilitychange", () => {
-  // Pause when tab loses focus so people don't accidentally "play"
-  // for 6 hours while at lunch.
-  if (document.hidden) {
-    if (state.startedAt) {
-      state.elapsedMs = Date.now() - state.startedAt;
-      state.startedAt = null;
-      saveCurrent();
-      document.getElementById("clock").classList.add("paused");
-    }
-  } else if (!state.won && !state.startedAt) {
-    // Don't auto-restart on focus return — wait for next user action.
-  }
-});
-
-/* ============================================================ persistence */
-function saveCurrent() {
-  if (!state.puzzle) return;
-  saveJSON(gridKey(state.puzzle.id), {
-    cells: state.cells,
-    elapsed_ms: state.elapsedMs,
-    completed: state.won,
+/* =====================================================================
+ * feed
+ * ===================================================================== */
+async function refreshFeed(showToast = false) {
+  if (!state.location) return;
+  // Expire any stale rows from anyone first (idempotent server-side).
+  await supa.rpc('expire_stale');
+  const { data, error } = await supa.rpc('nearby_requests', {
+    lat: state.location.lat,
+    lng: state.location.lng,
+    radius_m: state.radiusM,
+    max_rows: 50,
   });
-}
-
-/* ============================================================ completion */
-async function checkComplete() {
-  if (!state.puzzle || state.won) return;
-  try {
-    const r = await api("POST", "/api/validate", {
-      puzzle_id: state.puzzle.id,
-      cells: state.cells,
-    });
-    // Highlight mistakes (transient)
-    for (const el of document.querySelectorAll(".cell[data-mistake]")) {
-      el.removeAttribute("data-mistake");
-    }
-    for (const [mr, mc] of r.mistakes) {
-      const el = document.querySelector(`.cell[data-r="${mr}"][data-c="${mc}"]`);
-      if (el) el.dataset.mistake = "1";
-    }
-    if (r.complete) {
-      onWin();
-    }
-  } catch (e) { /* swallow — validation failure ≠ play failure */ }
-}
-
-function onWin() {
-  state.won = true;
-  stopTimer();
-  document.getElementById("clock").classList.add("won");
-  // Update streak.
-  updateStreak();
-  // Update best time.
-  const stats = loadJSON(LS.STATS, { total_ms: 0, best: {} });
-  stats.total_ms = (stats.total_ms || 0) + state.elapsedMs;
-  const prevBest = stats.best?.[state.puzzle.id];
-  const isNewBest = !prevBest || state.elapsedMs < prevBest;
-  if (!stats.best) stats.best = {};
-  if (isNewBest) stats.best[state.puzzle.id] = state.elapsedMs;
-  saveJSON(LS.STATS, stats);
-  document.getElementById("stat-best").textContent =
-    formatMs(stats.best[state.puzzle.id]);
-  markCleared(state.puzzle.id);
-  saveCurrent();
-  showWin(isNewBest, prevBest);
-  refreshTopStats();
-  renderPicker();
-}
-
-function updateStreak() {
-  const today = new Date().toISOString().slice(0, 10);
-  const s = loadJSON(LS.STREAK, { current: 0, last: null });
-  if (s.last === today) return;
-  // If last was yesterday, increment. Otherwise reset to 1.
-  const y = new Date();
-  y.setDate(y.getDate() - 1);
-  const yesterday = y.toISOString().slice(0, 10);
-  if (s.last === yesterday) s.current += 1;
-  else s.current = 1;
-  s.last = today;
-  saveJSON(LS.STREAK, s);
-}
-
-function showWin(isNewBest, prevBest) {
-  const p = state.puzzle;
-  const host = document.createElement("div");
-  host.className = "win-bg";
-  host.onclick = (ev) => { if (ev.target === host) host.remove(); };
-  // Show the puzzle's actual solution as a satisfying reveal.
-  const cellSize = 12;
-  const w = p.cols * cellSize;
-  const h = p.rows * cellSize;
-  let svgGrid = `<svg viewBox="0 0 ${w} ${h}" class="preview" preserveAspectRatio="xMidYMid meet"><rect width="${w}" height="${h}" fill="#fafaf6"/>`;
-  for (let r = 0; r < p.rows; r++) {
-    for (let c = 0; c < p.cols; c++) {
-      if (state.cells[r][c] === Cell.FILLED) {
-        svgGrid += `<rect x="${c * cellSize}" y="${r * cellSize}" width="${cellSize}" height="${cellSize}" fill="#1a1f2c"/>`;
-      }
-    }
+  if (error) {
+    toast('読み込み失敗: ' + error.message, 'err');
+    return;
   }
-  svgGrid += `</svg>`;
-  host.innerHTML = `
-    <div class="win-card">
-      <h2>クリア!</h2>
-      ${isNewBest ? `<div class="pb-badge">${svgUse("i-trophy", 12)} ベスト更新</div>` : ""}
-      ${svgGrid}
-      <div class="time-big">${formatMs(state.elapsedMs)}</div>
-      <div class="row">
-        <div class="col">
-          <div>このパズル</div>
-          <div class="v">${escapeHTML(p.title)}</div>
-        </div>
-        <div class="col">
-          <div>${isNewBest ? "前回ベスト" : "ベスト"}</div>
-          <div class="v">${prevBest ? formatMs(prevBest) : "—"}</div>
-        </div>
-      </div>
-      <div class="win-actions">
-        <button class="tool" onclick="this.closest('.win-bg').remove()">${svgUse("i-x", 14)} 閉じる</button>
-        <button class="tool primary" onclick="this.closest('.win-bg').remove(); loadNext();">${svgUse("i-arrow-right", 14)} 次のパズル</button>
-      </div>
+  state.feed = data || [];
+  renderFeed();
+  if (showToast) toast(`${state.feed.length}件の困りごと`, '');
+}
+
+function renderFeed() {
+  const list = $('#feed-list');
+  if (state.feed.length === 0) {
+    list.innerHTML = `<div class="empty">
+      <svg><use href="#i-home"/></svg>
+      <h3>今は誰も困っていない</h3>
+      <p>近所が平和ですね。範囲を広げてみる？</p>
     </div>`;
-  document.body.appendChild(host);
-  // Confetti.
-  const card = host.querySelector(".win-card");
-  const palette = ["#dc2626", "#f59e0b", "#059669", "#3b82f6", "#1a1f2c"];
-  for (let i = 0; i < 30; i++) {
-    const s = document.createElement("span");
-    s.className = "win-confetti";
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 60 + Math.random() * 220;
-    const x = Math.cos(angle) * dist;
-    const y = Math.sin(angle) * dist;
-    s.style.setProperty("--end", `translate(${x}px, ${y}px)`);
-    s.style.background = palette[i % palette.length];
-    s.style.animationDelay = (Math.random() * 0.2) + "s";
-    card.appendChild(s);
+    return;
   }
+  list.innerHTML = state.feed.map(r => requestCard(r, 'feed')).join('');
 }
 
-function loadNext() {
-  const idx = state.catalog.findIndex(p => p.id === state.puzzle?.id);
-  const next = state.catalog[(idx + 1) % state.catalog.length];
-  loadPuzzle(next.id);
+function requestCard(r, ctx) {
+  const me = state.profile;
+  const isMine = me && r.requester_id === me.id;
+  const isHelper = me && r.accepter_id === me.id;
+  let actions = '';
+  if (ctx === 'feed' && !isMine) {
+    actions = `<button class="btn good" onclick="acceptRequest('${r.id}')">${svgRef('i-check', 16)} 引き受ける</button>`;
+  } else if (ctx === 'mine') {
+    if (r.status === 'open') {
+      actions = `<button class="btn danger" onclick="cancelRequest('${r.id}')">${svgRef('i-x', 16)} 取り下げ</button>`;
+    } else if (r.status === 'accepted') {
+      actions = `<span style="color:var(--muted);font-size:12.5px;padding:8px">相手の完了報告待ち…</span>`;
+    } else if (r.status === 'confirmed_by_helper') {
+      actions = `
+        <button class="btn good" onclick="confirmRequester('${r.id}')">${svgRef('i-check', 16)} 完了確認</button>
+        <button class="btn danger" onclick="disputeRequest('${r.id}')">${svgRef('i-warn', 16)} 不一致</button>`;
+    } else if (r.status === 'completed') {
+      actions = `<span style="color:var(--good);font-size:12.5px;padding:8px;font-weight:600">完了済み</span>`;
+    } else if (r.status === 'cancelled' || r.status === 'expired') {
+      actions = `<span style="color:var(--muted);font-size:12.5px;padding:8px">${r.status === 'cancelled' ? '取り下げ済み' : '期限切れ'}</span>`;
+    } else if (r.status === 'disputed') {
+      actions = `<span style="color:var(--danger);font-size:12.5px;padding:8px">確認中</span>`;
+    }
+  } else if (ctx === 'helping') {
+    if (r.status === 'accepted') {
+      actions = `
+        <button class="btn good" onclick="confirmHelper('${r.id}')">${svgRef('i-check', 16)} 完了報告</button>
+        <button class="btn ghost" onclick="cancelRequest('${r.id}')">辞退</button>`;
+    } else if (r.status === 'confirmed_by_helper') {
+      actions = `<span style="color:var(--muted);font-size:12.5px;padding:8px">依頼者の確認待ち…</span>`;
+    } else if (r.status === 'completed') {
+      actions = `<span style="color:var(--good);font-size:12.5px;padding:8px;font-weight:600">完了 +1pt</span>`;
+    } else if (r.status === 'disputed') {
+      actions = `<span style="color:var(--danger);font-size:12.5px;padding:8px">確認中</span>`;
+    }
+  }
+  const statusKey = r.status === 'open' ? 'open'
+    : r.status === 'accepted' ? 'accepted'
+    : r.status === 'confirmed_by_helper' ? 'helper'
+    : r.status === 'completed' ? 'done'
+    : r.status === 'disputed' ? 'dispute' : 'cancel';
+  const statusLabel = ({
+    open: '募集中',
+    accepted: '引き受け中',
+    confirmed_by_helper: 'ヘルパー完了',
+    completed: '完了',
+    cancelled: '取り下げ',
+    expired: '期限切れ',
+    disputed: '確認中',
+  })[r.status] || r.status;
+  const distanceLine = r.distance_m != null
+    ? `<b>${formatDistance(r.distance_m)}</b> · ${formatTimeLeft(r.expires_at)}`
+    : `${formatTimeLeft(r.expires_at)}`;
+  return `
+    <div class="req-card">
+      <div class="kind-ic">${svgRef(KIND_ICON[r.kind] || 'k-other', 22)}</div>
+      <div>
+        <div class="who">
+          <b>${escapeHTML(r.requester_name || '?')}</b>
+          <span style="margin-left:6px;color:var(--muted-2)">信用 ${r.requester_trust ?? '–'}</span>
+        </div>
+        <div class="title">${escapeHTML(KIND_LABEL[r.kind] || r.kind)}</div>
+        ${r.description ? `<div class="desc">${escapeHTML(r.description)}</div>` : ''}
+        <div class="meta">${distanceLine}</div>
+        <span class="badge-status ${statusKey}">${statusLabel}</span>
+      </div>
+      <div class="price">${r.bounty_yen}</div>
+      ${actions ? `<div class="actions">${actions}</div>` : ''}
+    </div>`;
 }
 
-/* ============================================================ keyboard */
-document.addEventListener("keydown", (ev) => {
-  if (ev.target.tagName === "INPUT" || ev.target.tagName === "TEXTAREA") return;
-  if (ev.key === "f" || ev.key === "F") setTool("fill");
-  else if (ev.key === "x" || ev.key === "X") setTool("mark");
-  else if (ev.key === "h" || ev.key === "H") askHint();
-  else if (ev.key === "r" || ev.key === "R") resetGrid();
+/* =====================================================================
+ * post
+ * ===================================================================== */
+function renderPostKindGrid() {
+  const grid = $('#kind-grid');
+  if (grid.children.length) return;  // build once
+  grid.innerHTML = KIND_ORDER.map(k =>
+    `<button class="kind-chip ${k === state.postKind ? 'active' : ''}" data-kind="${k}">
+       ${svgRef(KIND_ICON[k], 26)}
+       <span class="lbl">${KIND_LABEL[k]}</span>
+     </button>`
+  ).join('');
+  grid.onclick = (ev) => {
+    const chip = ev.target.closest('.kind-chip');
+    if (!chip) return;
+    state.postKind = chip.dataset.kind;
+    [...grid.children].forEach(c => c.classList.toggle('active', c === chip));
+    $('#desc-required').style.display = state.postKind === 'other' ? 'inline' : 'none';
+  };
+  $('#bounty-pills').onclick = (ev) => {
+    const p = ev.target.closest('.pill');
+    if (!p) return;
+    state.postBounty = +p.dataset.yen;
+    [...$('#bounty-pills').children].forEach(c => c.classList.toggle('active', c === p));
+  };
+  $('#duration-pills').onclick = (ev) => {
+    const p = ev.target.closest('.pill');
+    if (!p) return;
+    state.postDuration = +p.dataset.min;
+    [...$('#duration-pills').children].forEach(c => c.classList.toggle('active', c === p));
+  };
+}
+
+async function submitRequest() {
+  if (!state.location) {
+    toast('現在地が必要です', 'err');
+    return;
+  }
+  const desc = $('#post-desc').value.trim();
+  if (state.postKind === 'other' && !desc) {
+    toast('「その他」は説明が必要です', 'err');
+    return;
+  }
+  const btn = $('#post-btn');
+  btn.disabled = true;
+  btn.innerHTML = svgRef('i-spinner', 16) + ' 送信中…';
+  const { data, error } = await supa.rpc('post_request', {
+    kind: state.postKind,
+    bounty_yen: state.postBounty,
+    lat: state.location.lat,
+    lng: state.location.lng,
+    description: desc || null,
+    location_label: null,
+    duration_minutes: state.postDuration,
+  });
+  btn.disabled = false;
+  btn.innerHTML = svgRef('i-check', 16) + ' 困りごとを投稿する';
+  if (error) {
+    toast('投稿失敗: ' + error.message, 'err');
+    return;
+  }
+  toast('投稿しました', 'ok');
+  $('#post-desc').value = '';
+  goView('inbox');
+  refreshInbox();
+}
+
+/* =====================================================================
+ * inbox
+ * ===================================================================== */
+$('#inbox-tabs').addEventListener('click', (ev) => {
+  const btn = ev.target.closest('button[data-tab]');
+  if (!btn) return;
+  state.inboxTab = btn.dataset.tab;
+  $$('#inbox-tabs button').forEach(b => b.classList.toggle('active', b === btn));
+  renderInbox();
 });
 
-/* ============================================================ boot */
-(async function boot() {
-  refreshTopStats();
-  try {
-    await loadCatalog();
-  } catch (e) { toast("読み込み失敗: " + e.message, "err"); return; }
+async function refreshInbox() {
+  if (!state.session) return;
+  const me = state.profile.id;
+  const [mine, helping] = await Promise.all([
+    supa.from('requests').select('*').eq('requester_id', me).order('created_at', { ascending: false }).limit(50),
+    supa.from('requests').select('*').eq('accepter_id', me).order('accepted_at', { ascending: false }).limit(50),
+  ]);
+  if (mine.error) toast('取得失敗: ' + mine.error.message, 'err');
+  if (helping.error) toast('取得失敗: ' + helping.error.message, 'err');
 
-  // Pick where we left off, or fall back to today.
-  const last = localStorage.getItem(LS.CURRENT);
-  let id = last && state.catalog.find(p => p.id === last) ? last : null;
-  if (!id) {
-    try {
-      const today = await api("GET", "/api/today");
-      id = today.id;
-    } catch { id = state.catalog[0]?.id; }
+  // Decorate with requester info (display_name + trust) for "helping" rows
+  // so the same card template works. For "mine" we just use self info.
+  state.inboxMine = (mine.data || []).map(r => ({
+    ...r,
+    requester_name: state.profile.display_name,
+    requester_trust: state.profile.trust_score,
+  }));
+  if (helping.data && helping.data.length) {
+    const ids = [...new Set(helping.data.map(r => r.requester_id))];
+    const { data: profs } = await supa.from('profiles').select('id,display_name,trust_score').in('id', ids);
+    const byId = Object.fromEntries((profs || []).map(p => [p.id, p]));
+    state.inboxHelping = helping.data.map(r => ({
+      ...r,
+      requester_name: byId[r.requester_id]?.display_name || '?',
+      requester_trust: byId[r.requester_id]?.trust_score,
+    }));
+  } else {
+    state.inboxHelping = [];
   }
-  if (id) await loadPuzzle(id);
-})();
+
+  // Badge count = items that need my action
+  const pendingMine = state.inboxMine.filter(r => r.status === 'confirmed_by_helper').length;
+  const pendingHelp = state.inboxHelping.filter(r => r.status === 'accepted').length;
+  const total = pendingMine + pendingHelp;
+  const badge = $('#inbox-badge');
+  badge.hidden = total === 0;
+  badge.textContent = total;
+
+  renderInbox();
+}
+
+function renderInbox() {
+  const list = $('#inbox-list');
+  const rows = state.inboxTab === 'mine' ? state.inboxMine : state.inboxHelping;
+  if (!rows.length) {
+    list.innerHTML = `<div class="empty">
+      <svg><use href="#i-inbox"/></svg>
+      <h3>${state.inboxTab === 'mine' ? 'まだ投稿していません' : 'まだ引き受けていません'}</h3>
+      <p>${state.inboxTab === 'mine' ? '「お願い」タブから投稿できます。' : '「近くで困った」から引き受けられます。'}</p>
+    </div>`;
+    return;
+  }
+  list.innerHTML = rows.map(r => requestCard(r, state.inboxTab === 'mine' ? 'mine' : 'helping')).join('');
+}
+
+/* =====================================================================
+ * request actions
+ * ===================================================================== */
+async function acceptRequest(id) {
+  const { error } = await supa.rpc('accept_request', { p_request_id: id });
+  if (error) return toast(error.message, 'err');
+  toast('引き受けました', 'ok');
+  refreshFeed();
+  refreshInbox();
+}
+async function cancelRequest(id) {
+  if (!confirm('取り下げますか?')) return;
+  const { error } = await supa.rpc('cancel_request', { p_request_id: id, p_reason: null });
+  if (error) return toast(error.message, 'err');
+  toast('取り下げました', 'ok');
+  refreshFeed();
+  refreshInbox();
+}
+async function confirmHelper(id) {
+  const { error } = await supa.rpc('confirm_helper', { p_request_id: id });
+  if (error) return toast(error.message, 'err');
+  toast('完了報告を送りました', 'ok');
+  refreshInbox();
+}
+async function confirmRequester(id) {
+  const { error } = await supa.rpc('confirm_requester', { p_request_id: id });
+  if (error) return toast(error.message, 'err');
+  toast('取引完了 — 相手の信用が +1', 'ok');
+  refreshInbox();
+}
+async function disputeRequest(id) {
+  const reason = prompt('不一致の理由を入力 (相手にも見えます):');
+  if (!reason) return;
+  const { error } = await supa.rpc('dispute_request', { p_request_id: id, p_reason: reason });
+  if (error) return toast(error.message, 'err');
+  toast('通報しました', 'ok');
+  refreshInbox();
+}
+
+/* =====================================================================
+ * profile
+ * ===================================================================== */
+function renderProfile() {
+  if (!state.profile) return;
+  $('#prof-name').value = state.profile.display_name || '';
+  $('#prof-trust').textContent = state.profile.trust_score ?? 100;
+  // Count completed transactions where I'm a party.
+  supa.from('transactions')
+      .select('*', { count: 'exact', head: true })
+      .or(`payer_id.eq.${state.profile.id},payee_id.eq.${state.profile.id}`)
+      .then(({ count }) => {
+        $('#prof-completed').innerHTML = `${count || 0}<small>件</small>`;
+      });
+}
+
+async function saveProfile() {
+  const name = $('#prof-name').value.trim();
+  if (!name) return toast('表示名を入れて', 'err');
+  const { data, error } = await supa.from('profiles')
+    .update({ display_name: name })
+    .eq('id', state.profile.id)
+    .select()
+    .single();
+  if (error) return toast(error.message, 'err');
+  state.profile = data;
+  toast('保存しました', 'ok');
+}
+
+/* =====================================================================
+ * boot
+ * ===================================================================== */
+async function boot() {
+  // PWA service worker.
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+  // Initial session.
+  const { data: { session } } = await supa.auth.getSession();
+  await onAuthStateChange(session);
+  // Reactive auth.
+  supa.auth.onAuthStateChange((_event, session) => {
+    onAuthStateChange(session);
+  });
+  // Poll feed + inbox every 15s while a session is open and the tab is
+  // visible. A future iteration would swap this for Supabase Realtime
+  // (postgres_changes channel) so updates arrive instantly.
+  setInterval(() => {
+    if (document.hidden) return;
+    if (!state.session) return;
+    refreshFeed();
+    refreshInbox();
+  }, 15000);
+}
+boot();
 </script>
 </body>
 </html>
