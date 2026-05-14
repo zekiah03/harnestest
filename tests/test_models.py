@@ -1,152 +1,136 @@
 """Tests for the domain models."""
 
-from datetime import datetime, timezone
-
 import pytest
 
-from favorgame.errors import ValidationError
-from favorgame.models import (
-    FavorKind,
-    FavorRequest,
-    Notification,
-    NotificationResponse,
-    RequestStatus,
-    SpontaneousAct,
-    Transaction,
-    User,
-    can_request_transition,
-)
+from oekaki.models import Cell, Clue, Grid, Puzzle, bitmap_to_clues
 
 
-class TestUser:
-    def test_valid(self):
-        user = User(id=1, username="alice")
-        assert user.username == "alice"
-        assert user.display_name == "alice"
-        assert user.wallet_yen == 0
-        assert user.points == 0
+class TestClue:
+    def test_empty_clue_min_length_is_zero(self):
+        assert Clue(()).min_length() == 0
 
-    def test_blank_username_rejected(self):
-        with pytest.raises(ValidationError):
-            User(id=1, username="   ")
+    def test_single_run(self):
+        assert Clue((3,)).min_length() == 3
 
-    def test_negative_wallet_rejected(self):
-        with pytest.raises(ValidationError):
-            User(id=1, username="a", wallet_yen=-1)
+    def test_runs_need_separators(self):
+        # [2, 3, 1] needs 2 + 1 + 3 + 1 + 1 = 8 cells minimum.
+        assert Clue((2, 3, 1)).min_length() == 8
 
-    def test_roundtrip(self):
-        user = User(id=7, username="bob", display_name="Bob", wallet_yen=300, points=12)
-        data = user.to_dict()
-        assert data["username"] == "bob"
-        restored = User.from_dict(data)
-        assert restored == user
+    def test_parse_accepts_iterable(self):
+        assert Clue.parse([1, 2]).runs == (1, 2)
+        assert Clue.parse(Clue((4,))).runs == (4,)
+        assert Clue.parse(None).runs == ()
 
 
-class TestFavorRequest:
-    def test_defaults(self):
-        req = FavorRequest(
-            id=1, requester_id=10, kind=FavorKind.SEAT, bounty_yen=100
+class TestBitmapToClues:
+    def test_empty_row_yields_empty_clue(self):
+        rows, cols = bitmap_to_clues([[0, 0, 0]])
+        assert rows == [[]]
+        assert cols == [[], [], []]
+
+    def test_full_row(self):
+        rows, cols = bitmap_to_clues([[1, 1, 1]])
+        assert rows == [[3]]
+        assert cols == [[1], [1], [1]]
+
+    def test_mixed(self):
+        rows, cols = bitmap_to_clues([
+            [1, 0, 1, 1],
+            [1, 1, 0, 1],
+        ])
+        assert rows == [[1, 2], [2, 1]]
+        assert cols == [[2], [1], [1], [2]]
+
+    def test_non_rectangular_rejected(self):
+        with pytest.raises(ValueError):
+            bitmap_to_clues([[1, 1], [1]])
+
+
+class TestPuzzleValidation:
+    def _ok_bitmap(self):
+        return [[1, 0], [0, 1]]
+
+    def test_consistent_puzzle_builds(self):
+        p = Puzzle.from_bitmap(id="x", title="X", bitmap=self._ok_bitmap(), difficulty="tiny")
+        assert p.rows == 2
+
+    def test_inconsistent_row_clues_rejected(self):
+        with pytest.raises(ValueError):
+            Puzzle(
+                id="x", title="X", rows=2, cols=2,
+                row_clues=[[2], []],   # wrong: real row 0 has run [1]
+                col_clues=[[1], [1]],
+                solution=self._ok_bitmap(),
+                difficulty="tiny",
+            )
+
+    def test_unknown_difficulty_rejected(self):
+        with pytest.raises(ValueError):
+            Puzzle.from_bitmap(id="x", title="X", bitmap=self._ok_bitmap(), difficulty="mythical")
+
+    def test_clues_too_big_rejected(self):
+        # row clue exceeds line length.
+        with pytest.raises(ValueError):
+            Puzzle(
+                id="x", title="X", rows=1, cols=2,
+                row_clues=[[3]],
+                col_clues=[[0], [0]],
+                solution=[[0, 0]],
+                difficulty="tiny",
+            )
+
+
+class TestPuzzleSerialization:
+    def test_round_trip(self):
+        p = Puzzle.from_bitmap(
+            id="x", title="X",
+            bitmap=[[1, 0], [0, 1]],
+            difficulty="tiny",
         )
-        assert req.kind is FavorKind.SEAT
-        assert req.status is RequestStatus.OPEN
-        assert req.accepter_id is None
+        d = p.to_dict(include_solution=True)
+        p2 = Puzzle.from_dict(d)
+        assert p2.solution == p.solution
+        assert p2.row_clues == [list(c) for c in p.row_clues]
 
-    def test_kind_from_string(self):
-        req = FavorRequest(id=1, requester_id=10, kind="seat", bounty_yen=0)
-        assert req.kind is FavorKind.SEAT
-
-    def test_unknown_kind_rejected(self):
-        with pytest.raises(ValidationError):
-            FavorRequest(id=1, requester_id=10, kind="nope", bounty_yen=0)
-
-    def test_generic_requires_description(self):
-        with pytest.raises(ValidationError):
-            FavorRequest(id=1, requester_id=10, kind=FavorKind.GENERIC, bounty_yen=0)
-
-    def test_negative_bounty_rejected(self):
-        with pytest.raises(ValidationError):
-            FavorRequest(
-                id=1, requester_id=10, kind=FavorKind.SEAT, bounty_yen=-1
-            )
-
-    def test_terminal(self):
-        req = FavorRequest(
-            id=1, requester_id=10, kind=FavorKind.SEAT, bounty_yen=0
-        )
-        assert not req.is_terminal()
-        req.status = RequestStatus.COMPLETED
-        assert req.is_terminal()
+    def test_to_dict_omits_solution_by_default(self):
+        p = Puzzle.from_bitmap(id="x", title="X",
+                               bitmap=[[1, 0], [0, 1]], difficulty="tiny")
+        d = p.to_dict()
+        assert "solution" not in d
 
 
-class TestRequestTransitions:
-    def test_open_to_accepted_allowed(self):
-        assert can_request_transition(RequestStatus.OPEN, RequestStatus.ACCEPTED)
+class TestGrid:
+    def test_default_is_unknown_everywhere(self):
+        g = Grid(rows=2, cols=3)
+        assert all(v == Cell.UNKNOWN for row in g.cells for v in row)
 
-    def test_accepted_to_completed_allowed(self):
-        assert can_request_transition(RequestStatus.ACCEPTED, RequestStatus.COMPLETED)
+    def test_set_and_get(self):
+        g = Grid(rows=2, cols=2)
+        g.set(0, 1, Cell.FILLED)
+        assert g.get(0, 1) == Cell.FILLED
 
-    def test_completed_is_terminal(self):
-        assert not can_request_transition(RequestStatus.COMPLETED, RequestStatus.OPEN)
-        assert not can_request_transition(RequestStatus.COMPLETED, RequestStatus.ACCEPTED)
+    def test_invalid_cell_value_rejected(self):
+        g = Grid(rows=1, cols=1)
+        with pytest.raises(ValueError):
+            g.set(0, 0, 7)
 
-    def test_no_skip_to_completed(self):
-        assert not can_request_transition(RequestStatus.OPEN, RequestStatus.COMPLETED)
+    def test_is_complete_only_when_no_unknowns(self):
+        g = Grid(rows=1, cols=2, cells=[[Cell.FILLED, Cell.EMPTY]])
+        assert g.is_complete()
+        g2 = Grid(rows=1, cols=2)
+        assert not g2.is_complete()
 
+    def test_filled_bitmap_treats_unknown_as_empty(self):
+        g = Grid(rows=1, cols=3, cells=[[Cell.FILLED, Cell.UNKNOWN, Cell.EMPTY]])
+        assert g.filled_bitmap() == [[1, 0, 0]]
 
-class TestNotification:
-    def test_respond_once(self):
-        n = Notification(id=1, request_id=10, recipient_id=2)
-        n.respond(NotificationResponse.ACCEPTED)
-        assert n.response is NotificationResponse.ACCEPTED
-        assert n.responded_at is not None
+    def test_matches_solution(self):
+        g = Grid(rows=2, cols=2, cells=[[Cell.FILLED, Cell.EMPTY],
+                                          [Cell.EMPTY, Cell.FILLED]])
+        assert g.matches([[1, 0], [0, 1]])
 
-    def test_double_respond_rejected(self):
-        n = Notification(id=1, request_id=10, recipient_id=2)
-        n.respond(NotificationResponse.IGNORED)
-        with pytest.raises(ValidationError):
-            n.respond(NotificationResponse.ACCEPTED)
-
-    def test_respond_pending_rejected(self):
-        n = Notification(id=1, request_id=10, recipient_id=2)
-        with pytest.raises(ValidationError):
-            n.respond(NotificationResponse.PENDING)
-
-
-class TestSpontaneousAct:
-    def test_same_user_rejected(self):
-        with pytest.raises(ValidationError):
-            SpontaneousAct(
-                id=1, giver_id=1, receiver_id=1, kind=FavorKind.SEAT,
-                giver_delta=5, receiver_delta=-2,
-            )
-
-
-class TestTransaction:
-    def test_negative_yen_rejected(self):
-        with pytest.raises(ValidationError):
-            Transaction(
-                id=1, request_id=None, payer_id=1, payee_id=2,
-                yen_amount=-1, point_amount=0,
-            )
-
-    def test_same_party_rejected(self):
-        with pytest.raises(ValidationError):
-            Transaction(
-                id=1, request_id=None, payer_id=1, payee_id=1,
-                yen_amount=100, point_amount=0,
-            )
-
-
-class TestEnumFromValue:
-    def test_favor_kind_parse_passthrough(self):
-        assert FavorKind.parse(FavorKind.SEAT) is FavorKind.SEAT
-
-    def test_favor_kind_parse_unknown(self):
-        with pytest.raises(ValidationError):
-            FavorKind.parse("bogus")
-
-    def test_request_status_parse(self):
-        assert RequestStatus.parse("open") is RequestStatus.OPEN
-
-    def test_notification_response_parse(self):
-        assert NotificationResponse.parse("ignored") is NotificationResponse.IGNORED
+    def test_roundtrip_serialization(self):
+        g = Grid(rows=2, cols=2, cells=[[Cell.FILLED, Cell.UNKNOWN],
+                                          [Cell.EMPTY, Cell.FILLED]])
+        g2 = Grid.from_dict(g.to_dict())
+        assert g2.cells == g.cells

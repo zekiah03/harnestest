@@ -2,2231 +2,1442 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-<meta name="color-scheme" content="dark" />
-<title>FavorGame — 困っている人にお願いを巡らせる</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no" />
+<meta name="color-scheme" content="light" />
+<meta name="theme-color" content="#faf6ec" />
+<title>お絵かきロジック — 数字から絵を解く</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Inter:wght@500;600;700&family=DM+Mono:wght@500;600&display=swap" rel="stylesheet" />
 <style>
+  /* ===================================================================
+   * tokens
+   * =================================================================== */
   :root {
-    --bg-0: #07080f;
-    --bg-1: #0e1020;
-    --surface: rgba(255, 255, 255, 0.035);
-    --surface-2: rgba(255, 255, 255, 0.06);
-    --surface-3: rgba(255, 255, 255, 0.09);
-    --edge: rgba(255, 255, 255, 0.07);
-    --edge-strong: rgba(255, 255, 255, 0.14);
-    --text: #f1f4fb;
-    --text-strong: #ffffff;
-    --muted: #8a93ad;
-    --muted-2: #5c6481;
-    --accent: #f59e0b;
-    --accent-2: #fb7185;
-    --success: #34d399;
-    --danger: #f43f5e;
-    --info: #38bdf8;
-    --tier-debt: #fb7185;
-    --tier-newbie: #94a3b8;
-    --tier-apprentice: #34d399;
-    --tier-regular: #38bdf8;
-    --tier-master: #a78bfa;
-    --tier-sage: #fbbf24;
-    --flame: #fb923c;
-    --radius: 16px;
-    --radius-sm: 10px;
-    --shadow: 0 18px 50px rgba(0, 0, 0, 0.55);
-    --shadow-sm: 0 6px 22px rgba(0, 0, 0, 0.35);
+    --paper:        #faf6ec;
+    --paper-2:      #f1ecdc;
+    --surface:      #ffffff;
+    --ink:          #1a1f2c;
+    --ink-soft:     #2d3445;
+    --muted:        #6b7280;
+    --muted-2:      #9ca3af;
+    --rule:         #e3dccc;
+    --rule-strong:  #a8a294;
+    --rule-major:   #1a1f2c;
+    --accent:       #dc2626;
+    --accent-2:     #f59e0b;
+    --good:         #059669;
+    --hint:         #f59e0b;
+    --mark:         #b45309;
+    --radius:       12px;
+    --shadow-sm:    0 1px 2px rgba(26, 31, 44, 0.06);
+    --shadow:       0 10px 30px rgba(26, 31, 44, 0.08), 0 2px 6px rgba(26, 31, 44, 0.04);
+    --shadow-lg:    0 24px 60px rgba(26, 31, 44, 0.14);
+    --cell:         clamp(20px, 5.5vw, 36px);
   }
-  * { box-sizing: border-box; }
+
+  /* ===================================================================
+   * reset / global
+   * =================================================================== */
+  *, *::before, *::after { box-sizing: border-box; }
   html, body { margin: 0; padding: 0; }
   body {
     font-family: "Noto Sans JP", -apple-system, BlinkMacSystemFont, sans-serif;
     background:
-      radial-gradient(900px 700px at 14% -8%, rgba(245, 158, 11, 0.12), transparent 60%),
-      radial-gradient(750px 600px at 110% 6%, rgba(56, 189, 248, 0.10), transparent 55%),
-      radial-gradient(900px 900px at 50% 120%, rgba(167, 139, 250, 0.08), transparent 60%),
-      linear-gradient(180deg, var(--bg-0) 0%, var(--bg-1) 100%);
+      radial-gradient(900px 700px at 12% -10%, rgba(245, 158, 11, 0.10), transparent 60%),
+      radial-gradient(700px 600px at 110% 4%, rgba(220, 38, 38, 0.06), transparent 55%),
+      linear-gradient(180deg, var(--paper) 0%, var(--paper-2) 100%);
     background-attachment: fixed;
-    color: var(--text);
+    color: var(--ink);
     min-height: 100vh;
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
   }
-  ::selection { background: rgba(245, 158, 11, 0.3); }
+  button { font-family: inherit; }
+  ::selection { background: rgba(220, 38, 38, 0.18); }
 
-  /* ---- topbar ---- */
+  /* ===================================================================
+   * topbar
+   * =================================================================== */
   .topbar {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--edge);
+    gap: 12px;
+    padding: 14px 18px;
+    background: rgba(255, 255, 255, 0.7);
+    border-bottom: 1px solid var(--rule);
     backdrop-filter: blur(20px);
-    background: rgba(7, 8, 15, 0.78);
     position: sticky;
     top: 0;
     z-index: 50;
   }
-  .brand { display: flex; align-items: center; gap: 9px; }
+  .brand { display: flex; align-items: center; gap: 11px; }
   .brand-mark {
-    width: 28px; height: 28px;
+    width: 32px; height: 32px;
     display: grid; place-items: center;
     border-radius: 8px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    color: #1a0d04;
+    background: var(--ink);
+    color: var(--paper);
+    box-shadow: var(--shadow-sm);
   }
-  .brand-mark svg { width: 16px; height: 16px; }
+  .brand-mark svg { width: 18px; height: 18px; }
   .brand-name {
-    font-family: "Inter", sans-serif;
-    font-weight: 600;
-    color: var(--text-strong);
-    font-size: 15px;
+    font-family: "Inter", "Noto Sans JP", sans-serif;
+    font-weight: 700;
+    color: var(--ink);
+    font-size: 16px;
     line-height: 1;
+    letter-spacing: -0.005em;
   }
   .brand-tag {
-    font-size: 10.5px;
+    font-size: 11px;
     color: var(--muted);
     line-height: 1.4;
+    margin-top: 2px;
   }
-  .top-controls {
-    display: flex; align-items: center; gap: 6px;
-    flex-wrap: wrap; justify-content: flex-end;
-  }
-  .pill-select {
-    display: flex; align-items: center; gap: 4px;
+  .top-controls { display: flex; gap: 6px; align-items: center; }
+  .top-controls .pill {
+    display: inline-flex; align-items: center; gap: 6px;
     background: var(--surface);
-    border: 1px solid var(--edge);
+    border: 1px solid var(--rule);
     border-radius: 999px;
-    padding: 4px 8px 4px 10px;
+    padding: 6px 10px 6px 8px;
     font-size: 12.5px;
+    color: var(--ink-soft);
+    box-shadow: var(--shadow-sm);
   }
-  .pill-select svg { width: 14px; height: 14px; color: var(--muted); }
-  .pill-select select {
-    background: transparent; border: 0; color: var(--text);
-    font: inherit; font-weight: 500; padding: 4px 2px; cursor: pointer;
-    max-width: 130px;
+  .top-controls .pill svg { width: 14px; height: 14px; color: var(--muted); }
+  .top-controls .pill b {
+    color: var(--ink);
+    font-family: "Inter", sans-serif;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
   }
-  .pill-select select option { background: var(--bg-1); color: var(--text); }
 
-  /* ---- hero ---- */
-  .hero {
-    padding: 24px 16px 4px;
-    max-width: 1240px;
+  /* ===================================================================
+   * layout
+   * =================================================================== */
+  main {
+    max-width: 980px;
     margin: 0 auto;
+    padding: 22px 16px 80px;
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
-  .hero-eyebrow {
+  @media (min-width: 900px) {
+    main {
+      grid-template-columns: minmax(0, 1.6fr) minmax(220px, 1fr);
+    }
+  }
+
+  /* ===================================================================
+   * hero
+   * =================================================================== */
+  .hero {
+    grid-column: 1 / -1;
+  }
+  .eyebrow {
     color: var(--muted);
     font-family: "Inter", sans-serif;
     text-transform: uppercase;
     font-size: 10.5px;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.22em;
     font-weight: 600;
-    margin-bottom: 8px;
+    margin-bottom: 6px;
   }
-  .hero h1 {
-    font-size: clamp(24px, 4.5vw, 40px);
+  h1.title {
+    font-size: clamp(26px, 5vw, 38px);
     line-height: 1.18;
-    margin: 0 0 8px;
+    margin: 0 0 6px;
     letter-spacing: -0.015em;
     font-weight: 700;
+    color: var(--ink);
   }
-  .hero h1 .accent {
-    background: linear-gradient(120deg, var(--accent) 0%, var(--accent-2) 70%, var(--info) 100%);
+  h1.title .accent {
+    background: linear-gradient(110deg, var(--accent) 10%, var(--accent-2) 90%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
   }
-  .hero p {
+  .lead {
     color: var(--muted);
     font-size: 14.5px;
-    max-width: 680px;
-    margin: 0 0 12px;
+    max-width: 580px;
+    margin: 0 0 10px;
   }
-  .scenarios { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
-  .chip {
-    display: inline-flex; align-items: center; gap: 6px;
+
+  /* ===================================================================
+   * board card
+   * =================================================================== */
+  .board {
     background: var(--surface);
-    border: 1px solid var(--edge);
-    color: var(--text);
-    border-radius: 999px;
-    padding: 6px 11px 6px 8px;
-    font: inherit; font-size: 12px;
-    cursor: pointer;
-    transition: all .15s ease;
-  }
-  .chip:hover { border-color: var(--accent); background: var(--surface-2); }
-  .chip svg { width: 14px; height: 14px; color: var(--accent); }
-
-  /* multiplier strip */
-  .multipliers {
-    display: flex; flex-wrap: wrap; gap: 6px;
-    margin-top: 10px;
-  }
-  .mult {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(251, 113, 133, 0.12));
-    border: 1px solid rgba(245, 158, 11, 0.35);
-    color: var(--text);
-    border-radius: 999px;
-    padding: 4px 11px 4px 8px;
-    font-size: 12px;
-    font-weight: 500;
-  }
-  .mult svg { width: 13px; height: 13px; color: var(--accent); }
-  .mult b { color: var(--accent); font-family: "Inter", sans-serif; }
-
-  /* ---- main grid ---- */
-  main {
-    max-width: 1240px;
-    margin: 0 auto;
-    padding: 6px 16px 80px;
-    display: grid;
-    gap: 12px;
-    grid-template-columns: 1fr;
-  }
-  @media (min-width: 920px) {
-    main { grid-template-columns: 1.45fr 1fr; gap: 14px; }
-  }
-
-  /* ---- card ---- */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--edge);
+    border: 1px solid var(--rule);
     border-radius: var(--radius);
-    padding: 16px;
     box-shadow: var(--shadow);
-    backdrop-filter: blur(6px);
-  }
-  .card-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
-  .card-head h2 {
-    font-size: 14.5px; font-weight: 700;
-    letter-spacing: -0.005em; margin: 0;
-    color: var(--text-strong);
-  }
-  .card-head .ic {
-    width: 26px; height: 26px; border-radius: 8px;
-    display: grid; place-items: center;
-    background: var(--surface-2);
-    color: var(--accent);
-  }
-  .card-head .ic svg { width: 15px; height: 15px; }
-  .card-head .meta { margin-left: auto; color: var(--muted); font-size: 11.5px; font-variant-numeric: tabular-nums; }
-  .card-help { color: var(--muted); font-size: 12.5px; margin: 0 0 10px; }
-
-  /* ---- profile ---- */
-  .profile { display: grid; grid-template-columns: auto 1fr; gap: 14px; align-items: center; }
-  .ring { position: relative; width: 76px; height: 76px; }
-  .ring svg.bg-ring { transform: rotate(-90deg); }
-  .ring .ring-inner {
-    position: absolute; inset: 8px;
-    border-radius: 50%;
+    padding: 16px;
+    position: relative;
     overflow: hidden;
-    display: grid; place-items: center;
   }
-  .ring .ring-inner .avatar-host { width: 100%; height: 100%; display: block; }
-  .ring .tier-pip {
-    position: absolute; right: -2px; bottom: -2px;
-    width: 24px; height: 24px;
-    background: var(--bg-1);
-    border: 2px solid var(--tier-color, var(--accent));
-    border-radius: 50%;
-    display: grid; place-items: center;
-    color: var(--tier-color, var(--accent));
-  }
-  .ring .tier-pip svg { width: 12px; height: 12px; }
-  .profile-meta { min-width: 0; }
-  .profile-name {
-    font-size: 17px; font-weight: 700;
-    color: var(--text-strong);
-    letter-spacing: -0.01em;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .profile-loc {
-    display: inline-flex; align-items: center; gap: 3px;
-    font-size: 11px; color: var(--muted);
-    background: var(--surface-2);
-    border: 1px solid var(--edge);
-    border-radius: 999px;
-    padding: 2px 8px 2px 6px;
-    margin-left: 4px;
-  }
-  .profile-loc svg { width: 10px; height: 10px; }
-  .profile-tier {
-    font-size: 12px; color: var(--muted); margin-top: 2px;
-  }
-  .profile-tier b { color: var(--tier-color); font-weight: 600; }
-  .profile-stats {
-    display: flex; gap: 14px; margin-top: 8px; font-size: 13px;
+  .board-head {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px;
     flex-wrap: wrap;
   }
-  .profile-stats .stat { display: flex; align-items: baseline; gap: 3px; }
-  .profile-stats .stat .v {
-    font-family: "Inter", sans-serif; font-weight: 700;
-    font-size: 16px; color: var(--text-strong);
-    font-variant-numeric: tabular-nums;
-  }
-  .profile-stats .stat .v.pos { color: var(--success); }
-  .profile-stats .stat .v.neg { color: var(--danger); }
-  .profile-stats .stat .l { color: var(--muted); font-size: 11px; }
-
-  /* streak ribbon */
-  .streak-ribbon {
-    display: flex; align-items: center; gap: 10px;
-    margin-top: 12px; padding: 10px 12px;
-    background: linear-gradient(90deg, rgba(251, 146, 60, 0.10), rgba(251, 113, 133, 0.06));
-    border: 1px solid rgba(251, 146, 60, 0.20);
-    border-radius: 12px;
-    font-size: 12.5px;
-  }
-  .streak-flame {
-    width: 32px; height: 32px;
-    border-radius: 10px;
-    background: rgba(251, 146, 60, 0.15);
-    color: var(--flame);
-    display: grid; place-items: center;
-    flex-shrink: 0;
-  }
-  .streak-flame svg { width: 18px; height: 18px; }
-  .streak-text b {
-    color: var(--text-strong); font-weight: 700;
-    font-family: "Inter", sans-serif; font-size: 16px;
-  }
-  .streak-sub { color: var(--muted); font-size: 11.5px; margin-top: 1px; }
-
-  /* badge case */
-  .badges {
-    margin-top: 12px;
-    padding-top: 12px;
-    border-top: 1px dashed var(--edge);
-  }
-  .badges-head {
-    display: flex; align-items: center; gap: 8px;
-    font-size: 12px; color: var(--muted);
-    margin-bottom: 8px;
-  }
-  .badges-head b { color: var(--text); }
-  .badges-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 6px;
-  }
-  @media (max-width: 380px) {
-    .badges-grid { grid-template-columns: repeat(4, 1fr); }
-  }
-  .badge {
-    aspect-ratio: 1 / 1;
-    border-radius: 12px;
-    background: var(--surface-2);
-    border: 1px solid var(--edge);
-    color: var(--muted-2);
-    display: grid; place-items: center;
-    position: relative;
-    transition: transform .2s, border-color .2s;
-  }
-  .badge:hover { transform: translateY(-2px); border-color: var(--edge-strong); }
-  .badge svg { width: 22px; height: 22px; }
-  .badge.earned {
-    background: linear-gradient(135deg, rgba(245, 158, 11, 0.18), rgba(251, 113, 133, 0.10));
-    border-color: rgba(245, 158, 11, 0.32);
-    color: var(--accent);
-  }
-  .badge.earned.recent { animation: badge-pulse 1.2s ease-out; }
-  @keyframes badge-pulse {
-    0%   { transform: scale(0.85); box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.5); }
-    60%  { transform: scale(1.05); box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); }
-    100% { transform: scale(1.0);  box-shadow: 0 0 0 0  rgba(245, 158, 11, 0); }
-  }
-  .badge .tip {
-    position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
-    background: rgba(20, 22, 36, 0.97);
-    color: var(--text);
-    border: 1px solid var(--edge-strong);
-    border-radius: 8px;
-    padding: 6px 9px;
-    font-size: 11px; line-height: 1.3;
-    white-space: nowrap;
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity .15s;
-    z-index: 5;
-  }
-  .badge:hover .tip { opacity: 1; }
-  .badge .progress {
-    position: absolute; bottom: 4px; left: 6px; right: 6px;
-    height: 2px;
-    background: var(--edge);
-    border-radius: 1px;
-    overflow: hidden;
-  }
-  .badge .progress > i {
-    display: block; height: 100%;
-    background: var(--accent);
-    transition: width .35s ease-out;
-  }
-
-  /* ---- quest card ---- */
-  .quests { display: flex; flex-direction: column; gap: 6px; }
-  .quest {
-    display: grid;
-    grid-template-columns: 30px 1fr auto;
-    align-items: center;
-    gap: 10px;
-    padding: 10px 12px;
-    border: 1px solid var(--edge);
-    border-radius: 12px;
-    background: var(--surface);
-    transition: border-color .2s;
-  }
-  .quest.done {
-    background: linear-gradient(135deg, rgba(52, 211, 153, 0.10), rgba(52, 211, 153, 0.04));
-    border-color: rgba(52, 211, 153, 0.32);
-  }
-  .quest .q-ic {
-    width: 30px; height: 30px; border-radius: 8px;
-    background: var(--surface-2);
-    color: var(--accent);
-    display: grid; place-items: center;
-    flex-shrink: 0;
-  }
-  .quest.done .q-ic { color: var(--success); background: rgba(52, 211, 153, 0.12); }
-  .quest .q-ic svg { width: 16px; height: 16px; }
-  .quest .q-title { font-weight: 700; font-size: 13.5px; color: var(--text-strong); }
-  .quest .q-desc { color: var(--muted); font-size: 11.5px; margin-top: 1px; }
-  .quest .q-meter {
-    width: 80px;
-    display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
-  }
-  .quest .q-meter .pct {
-    font-family: "Inter", sans-serif;
-    font-size: 11px; font-weight: 600;
-    color: var(--muted);
-  }
-  .quest.done .q-meter .pct { color: var(--success); }
-  .quest .q-meter .bar {
-    width: 100%; height: 4px; background: var(--edge); border-radius: 2px; overflow: hidden;
-  }
-  .quest .q-meter .bar > i {
-    display: block; height: 100%;
-    background: linear-gradient(90deg, var(--accent), var(--accent-2));
-    transition: width .4s ease-out;
-  }
-  .quest.done .q-meter .bar > i { background: var(--success); }
-
-  /* ---- buttons / forms ---- */
-  .btn {
-    display: inline-flex; align-items: center; justify-content: center;
-    gap: 6px;
-    background: linear-gradient(135deg, var(--accent), var(--accent-2));
-    color: #1a0d04;
-    border: 0;
-    border-radius: 10px;
-    padding: 10px 14px;
-    font: inherit; font-weight: 700; font-size: 13px;
-    cursor: pointer;
-    transition: transform .1s, box-shadow .15s, filter .15s;
-    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.20);
-    min-height: 40px;
-  }
-  .btn:hover { transform: translateY(-1px); box-shadow: 0 10px 26px rgba(245, 158, 11, 0.30); }
-  .btn:active { transform: translateY(0); }
-  .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
-  .btn svg { width: 14px; height: 14px; }
-  .btn.ghost {
-    background: transparent; color: var(--text);
-    border: 1px solid var(--edge-strong); box-shadow: none;
-    font-weight: 500;
-  }
-  .btn.ghost:hover { border-color: var(--accent); }
-  .btn.danger {
-    background: rgba(244, 63, 94, 0.10); color: var(--danger);
-    border: 1px solid rgba(244, 63, 94, 0.30); box-shadow: none;
-  }
-  .btn.danger:hover { background: rgba(244, 63, 94, 0.18); }
-  .btn.sm { padding: 6px 10px; font-size: 12px; min-height: 32px; }
-
-  label {
-    display: block;
-    font-size: 11px; font-weight: 600;
-    color: var(--muted);
-    margin: 12px 0 5px;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-  }
-  input, select, textarea {
-    width: 100%;
-    background: rgba(0, 0, 0, 0.32);
-    color: var(--text);
-    border: 1px solid var(--edge);
-    border-radius: var(--radius-sm);
-    padding: 10px 12px;
-    font: inherit; font-size: 14px;
-    transition: border-color .15s, box-shadow .15s, background .15s;
-    min-height: 40px;
-  }
-  input:focus, select:focus, textarea:focus {
-    outline: 0;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
-    background: rgba(0, 0, 0, 0.45);
-  }
-  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-
-  /* ---- open requests ---- */
-  .feed { display: flex; flex-direction: column; gap: 10px; }
-  .req {
-    border: 1px solid var(--edge);
-    border-radius: 14px;
-    padding: 14px;
-    background:
-      radial-gradient(360px 100px at 100% 0%, rgba(245, 158, 11, 0.10), transparent 70%),
-      rgba(0, 0, 0, 0.22);
-    position: relative;
-    overflow: hidden;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 10px 14px;
-  }
-  .req::before {
-    content: "";
-    position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
-    background: linear-gradient(180deg, var(--accent), var(--accent-2));
-  }
-  .req-head { display: flex; align-items: center; gap: 12px; }
-  .req-kind {
-    width: 38px; height: 38px;
-    display: grid; place-items: center;
-    border-radius: 10px;
-    background: rgba(245, 158, 11, 0.12);
-    color: var(--accent);
-    flex-shrink: 0;
-  }
-  .req-kind svg { width: 18px; height: 18px; }
-  .req-title { font-weight: 700; font-size: 14.5px; color: var(--text-strong); display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
-  .req-sub { color: var(--muted); font-size: 12.5px; margin-top: 2px; }
-  .req-loc {
-    display: inline-flex; align-items: center; gap: 3px;
-    background: var(--surface-2); border: 1px solid var(--edge);
-    border-radius: 999px;
-    padding: 1px 7px 1px 5px;
-    font-size: 10.5px; color: var(--muted); font-weight: 500;
-  }
-  .req-loc svg { width: 10px; height: 10px; }
-  .req-yen { align-self: start; text-align: right; }
-  .req-yen .amount {
-    font-family: "Inter", sans-serif; font-weight: 700;
-    font-size: 20px; color: var(--accent); line-height: 1;
-  }
-  .req-yen .amount::before { content: "¥"; opacity: 0.7; margin-right: 1px; }
-  .req-yen .status {
-    color: var(--muted); font-size: 11px;
-    display: inline-flex; align-items: center; gap: 3px;
-    margin-top: 4px;
-  }
-  .req-yen .status.accepted { color: var(--info); }
-  .req-actions {
-    grid-column: 1 / -1;
-    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
-  }
-  .req-actions .hint { color: var(--muted); font-size: 12px; }
-
-  /* ---- leaderboard ---- */
-  .lb { display: flex; flex-direction: column; gap: 4px; }
-  .lb-row {
-    display: grid;
-    grid-template-columns: 30px 32px 1fr auto auto;
-    gap: 10px;
-    align-items: center;
-    padding: 8px 6px;
-    border-radius: 10px;
-    transition: background .15s;
-  }
-  .lb-row:hover { background: rgba(255, 255, 255, 0.025); }
-  .lb-rank {
-    width: 26px; height: 26px;
-    border-radius: 50%;
-    display: grid; place-items: center;
-    font-family: "Inter", sans-serif; font-weight: 700;
-    font-size: 12.5px;
-    background: var(--surface-2);
-    color: var(--muted);
-  }
-  .lb-rank.gold   { background: linear-gradient(135deg, #fde68a, #f59e0b); color: #2a1a02; }
-  .lb-rank.silver { background: linear-gradient(135deg, #f1f5fb, #94a3b8); color: #1a1f33; }
-  .lb-rank.bronze { background: linear-gradient(135deg, #fdba74, #b45309); color: #2a1502; }
-  .lb-avatar { width: 28px; height: 28px; border-radius: 50%; overflow: hidden; }
-  .lb-who { min-width: 0; }
-  .lb-who .name {
-    font-weight: 600; font-size: 13.5px;
-    color: var(--text-strong);
-    display: flex; align-items: center; gap: 5px;
+  .puzzle-meta { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex: 1; }
+  .puzzle-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.01em;
     overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
-  .lb-who .name svg.tier-mark { width: 13px; height: 13px; flex-shrink: 0; }
-  .lb-who .uname { color: var(--muted); font-size: 11px; }
-  .lb-pts {
-    font-family: "Inter", sans-serif; font-weight: 700;
-    font-size: 14px; font-variant-numeric: tabular-nums;
-    color: var(--text);
-  }
-  .lb-pts.pos { color: var(--success); }
-  .lb-pts.neg { color: var(--danger); }
-  .lb-pts small { color: var(--muted); font-size: 10px; font-weight: 500; margin-left: 2px; }
-  .lb-yen { color: var(--muted); font-size: 11px; font-family: "Inter", sans-serif; font-variant-numeric: tabular-nums; }
-
-  /* ---- activity feed ---- */
-  .activity { display: flex; flex-direction: column; gap: 0; }
-  .ev {
-    padding: 9px 0;
-    border-bottom: 1px dashed var(--edge);
-    display: flex; align-items: flex-start; gap: 11px;
-    font-size: 13px;
-  }
-  .ev:last-child { border: 0; }
-  .ev-ic {
-    width: 28px; height: 28px; border-radius: 8px;
-    display: grid; place-items: center;
-    background: var(--surface-2);
-    color: var(--muted);
-    flex-shrink: 0;
-  }
-  .ev-ic svg { width: 14px; height: 14px; }
-  .ev-ic.paid { color: var(--accent); background: rgba(245, 158, 11, 0.10); }
-  .ev-ic.kind { color: var(--success); background: rgba(52, 211, 153, 0.10); }
-  .ev-ic.cancel { color: var(--danger); background: rgba(244, 63, 94, 0.10); }
-  .ev-body { flex: 1; min-width: 0; }
-  .ev-text b { color: var(--text-strong); font-weight: 600; }
-  .ev-text .d { font-weight: 700; font-variant-numeric: tabular-nums; }
-  .ev-text .d.pos { color: var(--success); }
-  .ev-text .d.neg { color: var(--danger); }
-  .ev-text .mult-tag {
-    display: inline-flex; align-items: center; gap: 3px;
-    background: rgba(245, 158, 11, 0.15);
-    color: var(--accent);
-    border-radius: 999px;
-    padding: 1px 7px 1px 5px;
-    font-size: 10.5px; font-weight: 600;
-    margin-left: 4px;
-  }
-  .ev-text .mult-tag svg { width: 10px; height: 10px; }
-  .ev-meta {
-    color: var(--muted); font-size: 11px;
-    font-variant-numeric: tabular-nums; flex-shrink: 0;
-    margin-top: 2px;
-  }
-  .ev-reactions { display: flex; align-items: center; gap: 4px; margin-top: 6px; flex-wrap: wrap; }
-  .rx-chip {
+  .puzzle-meta .sep { color: var(--rule-strong); }
+  .puzzle-size { color: var(--muted); font-size: 12.5px; font-family: "Inter", sans-serif; font-variant-numeric: tabular-nums; }
+  .puzzle-diff {
     display: inline-flex; align-items: center; gap: 4px;
-    background: var(--surface-2);
-    border: 1px solid var(--edge);
+    background: var(--paper-2);
     border-radius: 999px;
-    padding: 2px 8px 2px 6px;
+    padding: 2px 9px;
     font-size: 11px;
-    cursor: pointer;
-    color: var(--muted);
-    transition: all .15s;
+    color: var(--ink-soft);
+    font-weight: 600;
   }
-  .rx-chip:hover { color: var(--text); border-color: var(--edge-strong); }
-  .rx-chip.on {
-    background: rgba(245, 158, 11, 0.12);
-    border-color: rgba(245, 158, 11, 0.35);
-    color: var(--accent);
-  }
-  .rx-chip svg { width: 11px; height: 11px; }
-  .rx-add {
-    display: inline-flex; align-items: center;
-    background: transparent;
-    color: var(--muted-2);
-    border: 1px dashed var(--edge);
+  .puzzle-diff.tiny    { color: #4338ca; background: #eef2ff; }
+  .puzzle-diff.easy    { color: #047857; background: #d1fae5; }
+  .puzzle-diff.medium  { color: #b45309; background: #fef3c7; }
+  .puzzle-diff.hard    { color: #b91c1c; background: #fee2e2; }
+
+  .clock {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: var(--ink);
+    color: var(--paper);
+    padding: 4px 10px 4px 8px;
     border-radius: 999px;
-    padding: 2px 8px;
-    font-size: 11px;
-    cursor: pointer;
-    position: relative;
-  }
-  .rx-add:hover { color: var(--text); border-color: var(--edge-strong); }
-  .rx-popover {
-    position: absolute; bottom: calc(100% + 6px); left: 0;
-    background: rgba(14, 16, 32, 0.98);
-    border: 1px solid var(--edge-strong);
-    border-radius: 12px; padding: 6px;
-    display: flex; gap: 4px;
-    box-shadow: var(--shadow-sm);
-    z-index: 20;
-  }
-  .rx-popover button {
-    border: 0; background: transparent;
-    color: var(--text);
-    padding: 6px 8px; border-radius: 8px;
-    cursor: pointer;
-    display: grid; place-items: center;
-    transition: background .15s;
-  }
-  .rx-popover button:hover { background: var(--surface-3); color: var(--accent); }
-  .rx-popover button svg { width: 16px; height: 16px; }
-
-  /* ---- inbox ---- */
-  .inbox-item {
-    border: 1px solid var(--edge);
-    border-radius: 12px;
-    padding: 12px;
-    margin-bottom: 8px;
-    background: rgba(0, 0, 0, 0.18);
-  }
-  .inbox-item:last-child { margin-bottom: 0; }
-  .it-head { display: flex; align-items: center; gap: 10px; }
-  .it-kind {
-    width: 32px; height: 32px;
-    border-radius: 8px;
-    display: grid; place-items: center;
-    background: var(--surface-2);
-    color: var(--accent);
-    flex-shrink: 0;
-  }
-  .it-kind svg { width: 16px; height: 16px; }
-  .it-title { font-weight: 600; font-size: 13.5px; color: var(--text-strong); }
-  .it-sub { color: var(--muted); font-size: 12px; margin-top: 1px; }
-  .it-actions { display: flex; gap: 6px; margin-top: 10px; }
-
-  /* ---- empty states ---- */
-  .empty {
-    padding: 22px 14px; text-align: center;
-    color: var(--muted);
-    border: 1px dashed var(--edge); border-radius: 14px;
+    font-family: "DM Mono", monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
     font-size: 13px;
   }
-  .empty .ic-bg {
-    width: 44px; height: 44px;
-    margin: 0 auto 10px;
-    display: grid; place-items: center;
-    border-radius: 12px;
-    background: var(--surface-2);
-    color: var(--muted-2);
-  }
-  .empty .ic-bg svg { width: 22px; height: 22px; }
-  .empty h3 { color: var(--text); margin: 0 0 4px; font-size: 14px; font-weight: 600; }
-  .empty p { margin: 0; font-size: 12.5px; }
+  .clock svg { width: 12px; height: 12px; }
+  .clock.paused { background: var(--muted-2); }
+  .clock.won { background: var(--good); }
 
-  /* ---- log ---- */
-  details.log {
-    margin: 0;
+  /* ===================================================================
+   * the actual grid
+   * =================================================================== */
+  .grid-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 6px 0 2px;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: none;
+  }
+  .grid {
+    display: grid;
+    gap: 0;
+    background: var(--ink);    /* shows through as cell borders */
+    padding: 2px;
+    border-radius: 6px;
+  }
+  /* The corner above row clues and left of column clues. */
+  .corner { background: transparent; }
+  /* Column clues live in the first row of the grid, row clues in the first column. */
+  .ccol, .crow {
     background: var(--surface);
-    border: 1px solid var(--edge);
-    border-radius: 12px;
-    padding: 10px 14px;
+    color: var(--ink-soft);
+    font-family: "DM Mono", "Inter", monospace;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    font-size: clamp(11px, 2.6vw, 14px);
+    display: flex;
+    padding: 4px 3px;
+    position: relative;
+    transition: background 0.15s, color 0.15s;
   }
-  details.log summary {
-    cursor: pointer; color: var(--muted); font-size: 12px;
-    list-style: none; display: flex; align-items: center; gap: 6px;
+  .ccol { flex-direction: column; align-items: center; justify-content: flex-end; }
+  .crow { flex-direction: row; align-items: center; justify-content: flex-end; gap: 4px; }
+  .ccol > span, .crow > span { line-height: 1.05; }
+  .ccol > span.satisfied, .crow > span.satisfied { color: var(--muted-2); text-decoration: line-through; }
+  .ccol.hilite, .crow.hilite {
+    background: rgba(245, 158, 11, 0.12);
+    color: var(--ink);
   }
-  details.log summary::-webkit-details-marker { display: none; }
-  details.log summary svg { width: 12px; height: 12px; transition: transform .15s; }
-  details.log[open] summary svg { transform: rotate(90deg); }
-  details.log pre {
-    margin: 8px 0 0;
-    font-size: 11px; color: var(--muted);
-    white-space: pre-wrap; word-break: break-word;
-    max-height: 240px; overflow: auto;
-    font-family: "Inter", "SF Mono", "Monaco", monospace;
+  /* Body cells. */
+  .cell {
+    background: var(--surface);
+    width: var(--cell);
+    height: var(--cell);
+    display: grid; place-items: center;
+    position: relative;
+    cursor: pointer;
+    transition: background 0.05s;
+  }
+  .cell .glyph { width: 70%; height: 70%; opacity: 0; transition: opacity 0.06s, transform 0.1s; }
+  .cell[data-v="1"] { background: var(--ink); }
+  .cell[data-v="0"] .glyph { opacity: 1; color: var(--accent); }
+  .cell[data-v="0"][data-mistake="1"] .glyph { color: var(--accent); }
+  .cell[data-v="1"][data-mistake="1"] { background: repeating-linear-gradient(45deg, var(--accent) 0 6px, #ef4444 6px 12px); }
+  /* Major rule highlight every 5 cells */
+  .cell.major-right { box-shadow: inset -1px 0 0 0 var(--rule-major); }
+  .cell.major-bottom { box-shadow: inset 0 -1px 0 0 var(--rule-major); }
+  .cell.major-right.major-bottom { box-shadow: inset -1px 0 0 0 var(--rule-major), inset 0 -1px 0 0 var(--rule-major); }
+  .cell.hilite { background: rgba(245, 158, 11, 0.10); }
+  .cell.hilite[data-v="1"] { background: var(--ink); }
+  .cell.hint-pulse { animation: hint-pulse 1.4s ease-out; }
+  @keyframes hint-pulse {
+    0%   { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+    50%  { box-shadow: 0 0 0 14px rgba(245, 158, 11, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
   }
 
-  /* ---- toasts ---- */
+  /* ===================================================================
+   * controls bar (below grid)
+   * =================================================================== */
+  .toolbar {
+    display: flex; gap: 6px; flex-wrap: wrap; align-items: center;
+    margin-top: 12px;
+  }
+  .tool {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--surface);
+    color: var(--ink-soft);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font: inherit; font-weight: 500; font-size: 13px;
+    cursor: pointer;
+    transition: all 0.12s;
+    min-height: 38px;
+  }
+  .tool:hover { border-color: var(--ink); color: var(--ink); }
+  .tool svg { width: 14px; height: 14px; }
+  .tool.primary {
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  .tool.primary:hover { background: #2d3445; }
+  .tool.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+    box-shadow: 0 4px 10px rgba(220, 38, 38, 0.25);
+  }
+  .tool[disabled] { opacity: 0.5; cursor: not-allowed; }
+  .toolbar .spacer { flex: 1; }
+
+  /* The progress meter pinned to the toolbar */
+  .progress {
+    display: inline-flex; align-items: center; gap: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .progress b {
+    font-family: "DM Mono", monospace;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+  }
+
+  /* ===================================================================
+   * side rail
+   * =================================================================== */
+  .rail { display: flex; flex-direction: column; gap: 14px; }
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-sm);
+    padding: 14px;
+  }
+  .panel h2 {
+    margin: 0 0 10px;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.005em;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .panel h2 svg { width: 14px; height: 14px; color: var(--accent); }
+  .panel .help {
+    font-size: 12px; color: var(--muted); margin: 0 0 8px;
+  }
+
+  /* puzzle picker list */
+  .picker { display: flex; flex-direction: column; gap: 4px; }
+  .pick-item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+    padding: 8px 10px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 1px solid transparent;
+    transition: background 0.12s, border-color 0.12s;
+  }
+  .pick-item:hover { background: var(--paper-2); }
+  .pick-item.active {
+    background: var(--paper-2);
+    border-color: var(--rule);
+  }
+  .pick-item .pick-thumb {
+    width: 28px; height: 28px;
+    border-radius: 5px;
+    overflow: hidden;
+    background: var(--paper);
+    box-shadow: var(--shadow-sm);
+  }
+  .pick-item .pick-thumb svg { display: block; }
+  .pick-item .pick-name {
+    font-size: 13px; font-weight: 600;
+    color: var(--ink);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .pick-item .pick-sub {
+    font-size: 11px; color: var(--muted); margin-top: 1px;
+  }
+  .pick-item .pick-state {
+    display: inline-flex; align-items: center; gap: 3px;
+    color: var(--muted);
+    font-size: 11px;
+    font-family: "DM Mono", monospace;
+  }
+  .pick-item .pick-state.done { color: var(--good); }
+  .pick-item .pick-state svg { width: 11px; height: 11px; }
+
+  .difficulty-tabs {
+    display: flex; gap: 4px; margin-bottom: 8px;
+    padding: 3px;
+    background: var(--paper);
+    border-radius: 9px;
+    border: 1px solid var(--rule);
+  }
+  .difficulty-tabs button {
+    flex: 1;
+    border: 0; background: transparent;
+    padding: 6px 8px;
+    border-radius: 6px;
+    color: var(--muted);
+    font: inherit;
+    font-size: 11.5px; font-weight: 600;
+    cursor: pointer;
+    transition: all 0.12s;
+  }
+  .difficulty-tabs button:hover { color: var(--ink); }
+  .difficulty-tabs button.active {
+    background: var(--surface);
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+  }
+
+  /* stats */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .stat {
+    background: var(--paper);
+    border-radius: 8px;
+    padding: 9px 11px;
+    border: 1px solid var(--rule);
+  }
+  .stat .label { color: var(--muted); font-size: 11px; }
+  .stat .value {
+    font-family: "DM Mono", monospace;
+    font-weight: 600;
+    font-size: 17px;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .stat .value small { color: var(--muted-2); font-size: 12px; font-weight: 500; }
+
+  /* ===================================================================
+   * win overlay
+   * =================================================================== */
+  .win-bg {
+    position: fixed; inset: 0;
+    background: rgba(250, 246, 236, 0.85);
+    backdrop-filter: blur(10px);
+    z-index: 200;
+    display: grid; place-items: center;
+    padding: 24px;
+    animation: fade-in 0.3s ease-out;
+  }
+  @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+  .win-card {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 18px;
+    box-shadow: var(--shadow-lg);
+    padding: 28px;
+    max-width: 420px;
+    width: 100%;
+    text-align: center;
+    position: relative;
+    animation: pop-in 0.4s cubic-bezier(0.2, 0.7, 0.3, 1.2);
+  }
+  @keyframes pop-in {
+    from { transform: scale(0.85); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+  }
+  .win-card h2 {
+    font-size: 28px;
+    margin: 0 0 6px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+  .win-card .preview {
+    width: min(160px, 60vw);
+    margin: 14px auto;
+  }
+  .win-card .time-big {
+    font-family: "DM Mono", monospace;
+    font-weight: 600;
+    font-size: 32px;
+    color: var(--good);
+    margin: 4px 0;
+    font-variant-numeric: tabular-nums;
+  }
+  .win-card .pb-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: linear-gradient(120deg, var(--accent-2), var(--accent));
+    color: white;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+  .win-card .pb-badge svg { width: 12px; height: 12px; }
+  .win-card .row {
+    display: flex; gap: 12px; margin-top: 8px;
+    color: var(--muted); font-size: 13px;
+  }
+  .win-card .row .col {
+    flex: 1;
+    text-align: center;
+  }
+  .win-card .row .col .v {
+    font-family: "DM Mono", monospace;
+    font-weight: 600;
+    color: var(--ink);
+    font-size: 18px;
+    font-variant-numeric: tabular-nums;
+  }
+  .win-actions {
+    display: flex; gap: 8px; margin-top: 18px;
+  }
+  .win-actions .tool { flex: 1; justify-content: center; }
+  .win-confetti {
+    position: absolute; top: 50%; left: 50%;
+    width: 8px; height: 8px;
+    opacity: 0;
+    pointer-events: none;
+    animation: confetti 1.6s ease-out forwards;
+  }
+  @keyframes confetti {
+    0%   { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+    100% { opacity: 0; transform: var(--end) rotate(720deg); }
+  }
+
+  /* ===================================================================
+   * toasts
+   * =================================================================== */
   .toasts {
-    position: fixed; right: 16px; bottom: 16px;
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
     display: flex; flex-direction: column; gap: 8px;
     z-index: 100; pointer-events: none;
   }
   .toast {
-    background: rgba(14, 16, 32, 0.97);
-    border: 1px solid var(--edge-strong);
-    border-radius: 12px;
-    padding: 11px 14px;
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 10px;
+    padding: 10px 14px;
     font-size: 13px;
+    color: var(--ink-soft);
     box-shadow: var(--shadow);
-    animation: toast-in .25s ease-out;
+    animation: toast-in 0.25s ease-out;
     max-width: 320px;
-    display: flex; align-items: center; gap: 9px;
+    display: flex; align-items: center; gap: 8px;
     pointer-events: auto;
   }
-  .toast.ok    { border-left: 3px solid var(--success); }
-  .toast.err   { border-left: 3px solid var(--danger); }
-  .toast.info  { border-left: 3px solid var(--info); }
-  .toast.tier  { border-left: 3px solid var(--accent); }
-  .toast svg { width: 16px; height: 16px; flex-shrink: 0; }
-  .toast.ok svg { color: var(--success); }
-  .toast.err svg { color: var(--danger); }
-  .toast.info svg { color: var(--info); }
-  .toast.tier svg { color: var(--accent); }
+  .toast.info { border-left-color: var(--accent-2); }
+  .toast.ok { border-left-color: var(--good); }
+  .toast.err { border-left-color: var(--accent); }
+  .toast svg { width: 14px; height: 14px; flex-shrink: 0; }
+  .toast.ok svg { color: var(--good); }
+  .toast.info svg { color: var(--accent-2); }
+  .toast.err svg { color: var(--accent); }
   @keyframes toast-in {
     from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
+    to { opacity: 1; transform: translateY(0); }
   }
 
-  /* ---- onboarding modal ---- */
-  .modal-bg {
-    position: fixed; inset: 0;
-    background: rgba(2, 4, 12, 0.78);
-    backdrop-filter: blur(12px);
-    z-index: 200;
-    display: grid; place-items: center;
-    padding: 18px;
-    animation: bg-in .25s ease-out;
-  }
-  @keyframes bg-in { from { opacity: 0; } to { opacity: 1; } }
-  .modal {
-    background: var(--bg-1);
-    border: 1px solid var(--edge-strong);
-    border-radius: 22px;
-    padding: 22px;
-    max-width: 460px; width: 100%;
-    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
-  }
-  .modal h2 {
-    font-size: 20px; margin: 0 0 4px;
-    letter-spacing: -0.01em; color: var(--text-strong);
-  }
-  .modal p.lead { color: var(--muted); font-size: 13.5px; margin: 0 0 18px; }
-  .ob-list { display: flex; flex-direction: column; gap: 10px; margin: 0 0 18px; }
-  .ob-row {
-    display: grid; grid-template-columns: 36px 1fr; gap: 12px;
-    padding: 10px; border-radius: 12px;
-    background: var(--surface); border: 1px solid var(--edge);
-  }
-  .ob-row .ic {
-    width: 36px; height: 36px; border-radius: 10px;
-    background: rgba(245, 158, 11, 0.12); color: var(--accent);
-    display: grid; place-items: center;
-  }
-  .ob-row .ic svg { width: 18px; height: 18px; }
-  .ob-row h3 { margin: 0 0 2px; font-size: 14px; font-weight: 600; color: var(--text-strong); }
-  .ob-row p  { margin: 0; font-size: 12.5px; color: var(--muted); }
-  .modal-actions { display: flex; gap: 8px; }
-  .modal-actions .btn { flex: 1; }
-
-  /* ---- tier-up celebration ---- */
-  .celebrate-bg {
-    position: fixed; inset: 0;
-    background: radial-gradient(circle at center, rgba(245, 158, 11, 0.18), rgba(2, 4, 12, 0.86));
-    backdrop-filter: blur(8px);
-    z-index: 250;
-    display: grid; place-items: center;
-    animation: bg-in .35s ease-out;
-  }
-  .celebrate {
-    position: relative;
-    width: min(360px, 90vw);
-    text-align: center;
-    padding: 28px;
-    background: linear-gradient(180deg, rgba(20, 22, 40, 0.96), rgba(14, 16, 32, 0.96));
-    border: 1px solid var(--edge-strong);
-    border-radius: 22px;
-    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.6),
-                0 0 80px var(--tier-color, var(--accent));
-    animation: pop-in .55s cubic-bezier(.18,.8,.32,1.2);
-  }
-  @keyframes pop-in {
-    0% { transform: scale(0.7); opacity: 0; }
-    70% { transform: scale(1.04); opacity: 1; }
-    100% { transform: scale(1); opacity: 1; }
-  }
-  .celebrate .crown {
-    width: 80px; height: 80px;
-    margin: 0 auto 14px;
-    color: var(--tier-color, var(--accent));
-    filter: drop-shadow(0 0 24px var(--tier-color, var(--accent)));
-  }
-  .celebrate .crown svg { width: 100%; height: 100%; }
-  .celebrate h2 {
-    font-family: "Inter", "Noto Sans JP", sans-serif;
-    font-weight: 700;
-    margin: 0 0 6px;
-    color: var(--text-strong);
-    font-size: 24px;
-    letter-spacing: -0.01em;
-  }
-  .celebrate .tier-name {
-    color: var(--tier-color, var(--accent));
-    font-size: 26px; font-weight: 700;
-    margin: 6px 0 14px;
-  }
-  .celebrate p { color: var(--muted); margin: 0 0 16px; font-size: 13px; }
-  .celebrate .sparkle {
-    position: absolute;
-    width: 14px; height: 14px;
-    color: var(--accent);
-    opacity: 0;
+  /* ===================================================================
+   * keyboard hint
+   * =================================================================== */
+  .kbd-hint {
+    position: fixed;
+    bottom: 14px; left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: var(--muted-2);
+    background: rgba(255, 255, 255, 0.85);
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    padding: 4px 12px;
     pointer-events: none;
-    animation: sparkle 1.6s ease-out forwards;
+    display: none;
   }
-  @keyframes sparkle {
-    0%   { opacity: 0; transform: translate(0,0) scale(0.4); }
-    50%  { opacity: 1; transform: var(--end-transform) scale(1); }
-    100% { opacity: 0; transform: var(--end-transform-far) scale(0.6); }
+  @media (min-width: 800px) { .kbd-hint { display: inline-block; } }
+  .kbd-hint kbd {
+    font-family: "DM Mono", monospace;
+    font-size: 10.5px;
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 1px 5px;
+    margin: 0 2px;
+    color: var(--ink);
   }
-
-  /* ---- pulse helpers ---- */
-  .pulse-on-update { transition: color 0.3s, transform 0.25s; }
-  .pulse-on-update.bumping { transform: scale(1.18); color: var(--success); }
-  .pulse-on-update.bumping.neg { color: var(--danger); }
-
-  /* ---- helpers ---- */
-  .stack { display: flex; flex-direction: column; gap: 12px; }
-  .muted { color: var(--muted); font-size: 12px; }
 </style>
 </head>
 <body>
 
-<!-- ===================================================================== -->
-<!-- SVG sprite. Every icon defined once, referenced via <use href="#i-x"/> -->
-<!-- ===================================================================== -->
+<!-- =====================================================================
+SVG sprite — every icon defined once, referenced via <use href="#i-name"/>.
+====================================================================== -->
 <svg style="position:absolute; width:0; height:0; overflow:hidden" aria-hidden="true">
   <defs>
     <symbol id="i-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10z"/>
+      <rect x="3" y="3" width="18" height="18" rx="2"/>
+      <path d="M3 9h18M3 15h18M9 3v18M15 3v18"/>
+      <rect x="3" y="3" width="6" height="6" fill="currentColor"/>
+      <rect x="15" y="9" width="6" height="6" fill="currentColor"/>
+      <rect x="9" y="15" width="6" height="6" fill="currentColor"/>
     </symbol>
-    <!-- tier glyphs -->
-    <symbol id="i-cloud" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M7 17a4 4 0 0 1 0-8 5 5 0 0 1 9.5 1.5A3.5 3.5 0 1 1 17 17H7z"/>
-      <path d="M9 21l1-2M14 21l1-2"/>
-    </symbol>
-    <symbol id="i-sprout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 21v-7"/>
-      <path d="M12 14c0-3 2.5-5 5-5-.3 3-2.5 5-5 5z"/>
-      <path d="M12 14c0-3-2.5-5-5-5 .3 3 2.5 5 5 5z"/>
-    </symbol>
-    <symbol id="i-leaf" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M5 19c0-9 6-15 15-15-.5 8-6 14-14 14"/>
-      <path d="M5 19l8-8"/>
-    </symbol>
-    <symbol id="i-gem" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M6 9l6-5 6 5-6 11z"/>
-      <path d="M6 9h12M9 9l3 11M15 9l-3 11"/>
-    </symbol>
-    <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 3l2.6 5.6 6 .7-4.4 4.2 1.2 6L12 16.8 6.6 19.5l1.2-6L3.4 9.3l6-.7z"/>
-    </symbol>
-    <symbol id="i-crown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 8l3 9h12l3-9-5 4-4-6-4 6z"/>
-      <path d="M5 20h14"/>
-    </symbol>
-    <!-- favor kinds: core five -->
-    <symbol id="i-seat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M5 16h14M5 16v4M19 16v4"/>
-      <path d="M7 16V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v9"/>
-      <path d="M9 12h6"/>
-    </symbol>
-    <symbol id="i-luggage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="5" y="7" width="14" height="13" rx="2"/>
-      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-      <path d="M9 11v6M15 11v6"/>
-    </symbol>
-    <symbol id="i-toilet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="4" y="3" width="16" height="18" rx="1.5"/>
-      <circle cx="9" cy="9" r="1.4"/>
-      <path d="M7.5 16c0-2 1-3.5 1.5-3.5s1.5 1.5 1.5 3.5"/>
-      <circle cx="15" cy="9" r="1.4"/>
-      <path d="M13.5 16h3M15 12.5V16"/>
-    </symbol>
-    <symbol id="i-child" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="6" r="2.5"/>
-      <path d="M9 11h6l-1 9h-4z"/>
-      <path d="M10 14l-2 3M14 14l2 3"/>
-    </symbol>
-    <symbol id="i-sparkles" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l2.8 2.8M15.7 15.7l2.8 2.8M5.5 18.5l2.8-2.8M15.7 8.3l2.8-2.8"/>
-    </symbol>
-    <!-- favor kinds: expansion -->
-    <symbol id="i-directions" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="9"/>
-      <path d="M16 8l-5 2-2 5 5-2z"/>
+      <path d="M12 7v5l3 2"/>
     </symbol>
-    <symbol id="i-photo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="6" width="18" height="14" rx="2"/>
-      <path d="M8 6l1.5-2h5L16 6"/>
-      <circle cx="12" cy="13" r="3.5"/>
+    <symbol id="i-mark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+      <path d="M6 6l12 12M18 6L6 18"/>
     </symbol>
-    <symbol id="i-umbrella" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 12a9 9 0 0 1 18 0z"/>
-      <path d="M12 3v9"/>
-      <path d="M12 20a2 2 0 1 1-4 0"/>
+    <symbol id="i-fill" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <rect x="5" y="5" width="14" height="14"/>
     </symbol>
-    <symbol id="i-charger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="7" width="16" height="10" rx="2"/>
-      <path d="M19 11h2v2h-2"/>
-      <path d="M9 9l-2 3h3l-2 3" stroke="var(--accent)"/>
+    <symbol id="i-hint" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 18h6M10 21h4"/>
+      <path d="M12 3a6 6 0 0 0-4 10.5c1 1 1.5 2 1.5 3v.5h5V17c0-1 .5-2 1.5-3A6 6 0 0 0 12 3z"/>
     </symbol>
-    <symbol id="i-translate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 6h7M7 4v2M4 11c0-3 7-3 7 0 0 2-3 3-5 5h5"/>
-      <path d="M13 14l3-7 3 7M14.4 11.5h3.2"/>
+    <symbol id="i-reset" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 12a9 9 0 1 0 3-6.7L3 8"/>
+      <path d="M3 3v5h5"/>
     </symbol>
-    <symbol id="i-pet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="6" cy="10" r="1.8"/>
-      <circle cx="10" cy="6" r="1.8"/>
-      <circle cx="14" cy="6" r="1.8"/>
-      <circle cx="18" cy="10" r="1.8"/>
-      <path d="M8 18a4 4 0 0 1 8 0c0 2-2 2-4 2s-4 0-4-2z"/>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12l4.5 4.5L19 7"/>
     </symbol>
-    <symbol id="i-reach" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M11 21V10"/>
-      <path d="M11 10l-3-3M11 10l-3 3"/>
-      <path d="M11 10h4l-1-7"/>
-      <rect x="14" y="2" width="7" height="3"/>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12h14M13 5l7 7-7 7"/>
     </symbol>
-    <!-- ui / supporting -->
-    <symbol id="i-yen" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <path d="M8 8l4 5 4-5M9 13h6M9 16h6M12 13v6"/>
+    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 6l12 12M18 6L6 18"/>
     </symbol>
-    <symbol id="i-lifebuoy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <circle cx="12" cy="12" r="3.5"/>
-      <path d="M5 5l4 4M19 5l-4 4M5 19l4-4M19 19l-4-4"/>
-    </symbol>
-    <symbol id="i-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="6" width="18" height="13" rx="2"/>
-      <path d="M16 13h3"/>
-      <path d="M3 9c0-1.5 1-3 3-3h11"/>
-    </symbol>
-    <symbol id="i-handshake" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 12l3-1 3.5 3.5a1.5 1.5 0 1 0 2.1-2.1L8.5 9l3-2 3 1.5 4-1L21 9v6l-3 1-2 2-3-1-3 1.5L7 17l-4-1z"/>
-    </symbol>
-    <symbol id="i-bell" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M6 9a6 6 0 1 1 12 0c0 4 1.5 5 2 6H4c.5-1 2-2 2-6z"/>
-      <path d="M10 19a2 2 0 0 0 4 0"/>
-    </symbol>
-    <symbol id="i-inbox" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 13v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6"/>
-      <path d="M3 13l3-9h12l3 9"/>
-      <path d="M3 13h6l1 2h4l1-2h6"/>
-    </symbol>
-    <symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <symbol id="i-trophy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M7 4h10v6a5 5 0 0 1-10 0z"/>
       <path d="M7 6H4a2 2 0 0 0 0 4h3M17 6h3a2 2 0 0 1 0 4h-3"/>
       <path d="M10 15c0 2-1 3-1 5h6c0-2-1-3-1-5"/>
       <path d="M8 20h8"/>
     </symbol>
-    <symbol id="i-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 12h4l2-6 4 12 2-6h6"/>
+    <symbol id="i-puzzle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 4h6v3a2 2 0 0 0 4 0V4h6v6h-3a2 2 0 0 0 0 4h3v6h-6v-3a2 2 0 0 0-4 0v3H4v-6h3a2 2 0 0 0 0-4H4z"/>
     </symbol>
-    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M5 12l4 4 10-10"/>
-    </symbol>
-    <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M6 6l12 12M18 6L6 18"/>
-    </symbol>
-    <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M5 12h14M13 5l7 7-7 7"/>
-    </symbol>
-    <symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M9 6l6 6-6 6"/>
-    </symbol>
-    <symbol id="i-coin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="8"/>
-      <path d="M9 9l3 4 3-4M9 13h6M11 13v3"/>
-    </symbol>
-    <symbol id="i-heart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>
-    </symbol>
-    <symbol id="i-user-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="9" cy="8" r="3.5"/>
-      <path d="M3 20c0-3.5 2.5-6 6-6s6 2.5 6 6"/>
-      <path d="M17 8v6M14 11h6"/>
-    </symbol>
-    <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M13 2L4 14h7l-1 8 9-12h-7z"/>
-    </symbol>
-    <!-- new ui icons -->
-    <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 22s7-7 7-12a7 7 0 1 0-14 0c0 5 7 12 7 12z"/>
-      <circle cx="12" cy="10" r="2.5"/>
-    </symbol>
-    <symbol id="i-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <symbol id="i-flame" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 21c-4 0-7-3-7-7 0-3 2-5 3-5 0 2 1 3 2 3 0-4 2-7 6-9 0 4 5 6 5 11 0 4-3 7-7 7z"/>
     </symbol>
-    <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <circle cx="12" cy="12" r="5"/>
-      <circle cx="12" cy="12" r="1.5"/>
+    <symbol id="i-sparkle" viewBox="0 0 24 24" fill="currentColor" stroke="none">
+      <path d="M12 3l1.5 5L19 9l-5.5 1L12 16l-1.5-6L5 9l5.5-1z"/>
     </symbol>
-    <symbol id="i-bolt-fill" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-      <path d="M13 2L4 14h7l-1 8 9-12h-7z"/>
-    </symbol>
-    <!-- reaction glyphs -->
-    <symbol id="i-rx-heart" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-      <path d="M12 20s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.5-7 10-7 10z"/>
-    </symbol>
-    <symbol id="i-rx-thumb" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-      <path d="M4 10h3v10H4z"/>
-      <path d="M9 20h7c1 0 2-.5 2.4-1.5L21 12c.3-1-.4-2-1.4-2h-5l1-4c.3-1-1-2-2-1.4L9 9z"/>
-    </symbol>
-    <symbol id="i-rx-spark" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-      <path d="M12 3l1.6 6.4L20 11l-6.4 1.6L12 19l-1.6-6.4L4 11l6.4-1.6z"/>
-    </symbol>
-    <symbol id="i-rx-clap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M8 12V5a1.5 1.5 0 0 1 3 0v5"/>
-      <path d="M11 11V4a1.5 1.5 0 0 1 3 0v6"/>
-      <path d="M14 11V6a1.5 1.5 0 0 1 3 0v6"/>
-      <path d="M17 8a1.5 1.5 0 0 1 3 0v7c0 3-2 6-6 6s-7-2-7-6v-3l-2-2c-.7-.7.3-1.6 1-1l3 3"/>
-      <path d="M5 4l1 2M3 8l2 1M5 12l2-1"/>
+    <symbol id="i-bars" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 10v10M10 4v16M16 14v6M22 8v12"/>
     </symbol>
   </defs>
 </svg>
 
-<!-- ===================================================================== -->
+<!-- ======================================================================
+topbar
+====================================================================== -->
 <header class="topbar">
   <div class="brand">
     <span class="brand-mark"><svg><use href="#i-brand"/></svg></span>
     <div>
-      <div class="brand-name">FavorGame</div>
-      <div class="brand-tag">困っている人を巡らせる</div>
+      <div class="brand-name">お絵かきロジック</div>
+      <div class="brand-tag">数字から絵を解く</div>
     </div>
   </div>
   <div class="top-controls">
-    <span class="pill-select">
-      <svg><use href="#i-pin"/></svg>
-      <select id="loc-select" aria-label="現在地" onchange="setMyLocation(this.value)">
-        <option value="">どこでも</option>
-      </select>
+    <span class="pill" title="今日の連続日数">
+      <svg><use href="#i-flame"/></svg>
+      <b id="streak-pill">0</b>日
     </span>
-    <span class="pill-select">
-      <svg><use href="#i-user-plus"/></svg>
-      <select id="me-select" aria-label="現在のユーザー" onchange="setMe(this.value)">
-        <option value="">あなた</option>
-      </select>
+    <span class="pill" title="クリア済み">
+      <svg><use href="#i-trophy"/></svg>
+      <b id="cleared-pill">0</b>/<span id="cleared-total">0</span>
     </span>
   </div>
 </header>
 
-<section class="hero">
-  <div class="hero-eyebrow">A REAL-LIFE GAME OF KINDNESS</div>
-  <h1>困っている人を見つけたら、<br/><span class="accent">お願いを巡らせる。</span></h1>
-  <p>満員電車の席、駅階段のベビーカー、トイレの順番、子供を5分だけ、夕立に傘、迷子の道案内。瞬間的な "いま" を、登録メンバー同士で <b>お金とポイント</b> で解決する。助けると評判が貯まり、助けられると少し減る。</p>
-  <div class="scenarios" id="scenarios">
-    <button class="chip" onclick="seedScenario('seat',100)"><svg><use href="#i-seat"/></svg> 席 100円</button>
-    <button class="chip" onclick="seedScenario('luggage',100)"><svg><use href="#i-luggage"/></svg> 荷物 100円</button>
-    <button class="chip" onclick="seedScenario('toilet',100)"><svg><use href="#i-toilet"/></svg> トイレ 100円</button>
-    <button class="chip" onclick="seedScenario('child',300)"><svg><use href="#i-child"/></svg> 子守り 300円</button>
-    <button class="chip" onclick="seedScenario('umbrella',150)"><svg><use href="#i-umbrella"/></svg> 傘 150円</button>
-    <button class="chip" onclick="seedScenario('translate',300)"><svg><use href="#i-translate"/></svg> 通訳 300円</button>
-  </div>
-  <div class="multipliers" id="multipliers"></div>
-</section>
-
 <main>
 
-<!-- LEFT COLUMN -->
-<div class="stack">
+<!-- hero -->
+<section class="hero">
+  <div class="eyebrow">A LOGIC PAINT PUZZLE</div>
+  <h1 class="title">数字をヒントに、<span class="accent">マスを塗って絵を完成させる。</span></h1>
+  <p class="lead">行と列の数字は、塗りつぶす連続マス数。たとえば「3 2 1」なら「3マス連続 → 隙間 → 2マス連続 → 隙間 → 1マス」。論理だけで答えは一つに決まる。</p>
+</section>
 
-  <div class="card" id="profile-card">
-    <div class="card-head">
-      <span class="ic"><svg><use href="#i-heart"/></svg></span>
-      <h2>あなたのプロフィール</h2>
-      <span class="meta" id="profile-rank"></span>
+<!-- board -->
+<section class="board">
+  <div class="board-head">
+    <div class="puzzle-meta">
+      <span class="puzzle-title" id="title">…</span>
+      <span class="sep">·</span>
+      <span class="puzzle-size" id="size">…</span>
+      <span class="puzzle-diff" id="diff-tag">…</span>
     </div>
-    <div id="profile-body"></div>
+    <span class="clock" id="clock">
+      <svg><use href="#i-clock"/></svg>
+      <span id="clock-text">00:00</span>
+    </span>
+  </div>
+  <div class="grid-wrap">
+    <div class="grid" id="grid" role="grid" aria-label="puzzle grid"></div>
+  </div>
+  <div class="toolbar">
+    <button class="tool" id="tool-fill" onclick="setTool('fill')">
+      <svg><use href="#i-fill"/></svg> 塗る
+    </button>
+    <button class="tool" id="tool-mark" onclick="setTool('mark')">
+      <svg><use href="#i-mark"/></svg> 印
+    </button>
+    <button class="tool" id="tool-hint" onclick="askHint()">
+      <svg><use href="#i-hint"/></svg> ヒント
+    </button>
+    <button class="tool" id="tool-reset" onclick="resetGrid()">
+      <svg><use href="#i-reset"/></svg> リセット
+    </button>
+    <span class="spacer"></span>
+    <span class="progress">塗り <b id="prog-text">0/0</b></span>
+  </div>
+</section>
+
+<!-- rail -->
+<aside class="rail">
+
+  <div class="panel">
+    <h2><svg><use href="#i-puzzle"/></svg> パズル一覧</h2>
+    <div class="difficulty-tabs" id="diff-tabs">
+      <button class="active" data-diff="all">全部</button>
+      <button data-diff="tiny">小</button>
+      <button data-diff="easy">易</button>
+      <button data-diff="medium">中</button>
+    </div>
+    <div class="picker" id="picker"></div>
   </div>
 
-  <div class="card">
-    <div class="card-head">
-      <span class="ic"><svg><use href="#i-target"/></svg></span>
-      <h2>今日のクエスト</h2>
-      <span class="meta" id="quest-meta"></span>
+  <div class="panel">
+    <h2><svg><use href="#i-bars"/></svg> 成績</h2>
+    <p class="help">ベストタイムはこのブラウザにだけ保存。</p>
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="label">このパズルのベスト</div>
+        <div class="value" id="stat-best">—</div>
+      </div>
+      <div class="stat">
+        <div class="label">クリア合計</div>
+        <div class="value" id="stat-cleared">0<small></small></div>
+      </div>
+      <div class="stat">
+        <div class="label">通算プレイ時間</div>
+        <div class="value" id="stat-total-time">0<small>秒</small></div>
+      </div>
+      <div class="stat">
+        <div class="label">連続記録</div>
+        <div class="value" id="stat-streak">0<small>日</small></div>
+      </div>
     </div>
-    <div id="quests" class="quests"></div>
   </div>
 
-  <div class="card">
-    <div class="card-head">
-      <span class="ic"><svg><use href="#i-zap"/></svg></span>
-      <h2>いま開いているお願い</h2>
-      <span class="meta" id="open-count"></span>
-    </div>
-    <div id="open-feed" class="feed"></div>
+  <div class="panel">
+    <h2><svg><use href="#i-sparkle"/></svg> 遊び方</h2>
+    <p class="help" style="line-height: 1.6">
+      ・タップで塗る / ドラッグで連続塗り<br/>
+      ・「印」モードで×印 (空マス確定)<br/>
+      ・「ヒント」は次に確定するマスを1つ教える<br/>
+      ・行や列の数字を順番にヒントとして使う
+    </p>
   </div>
 
-  <div class="card">
-    <div class="card-head">
-      <span class="ic"><svg><use href="#i-inbox"/></svg></span>
-      <h2>通知ボックス</h2>
-      <span class="meta" id="inbox-meta"></span>
-    </div>
-    <p class="card-help">承認すると依頼者に名乗りを上げる。完了確認は依頼者が行う。</p>
-    <div id="inbox-list"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-head">
-      <span class="ic"><svg><use href="#i-pulse"/></svg></span>
-      <h2>アクティビティ</h2>
-    </div>
-    <div id="activity" class="activity"></div>
-  </div>
-
-</div>
-
-<!-- RIGHT COLUMN -->
-<div class="stack">
-
-  <div class="card">
-    <div class="card-head">
-      <span class="ic"><svg><use href="#i-trophy"/></svg></span>
-      <h2>リーダーボード</h2>
-    </div>
-    <p class="card-help">人助けで積み上げた評判ポイントの累計。ティアごとに色が変わる。</p>
-    <div id="lb" class="lb"></div>
-  </div>
-
-  <div class="card">
-    <div class="card-head">
-      <span class="ic"><svg><use href="#i-user-plus"/></svg></span>
-      <h2>ユーザー登録</h2>
-    </div>
-    <div class="row">
-      <div>
-        <label>ユーザー名</label>
-        <input id="reg-username" placeholder="alice" autocomplete="off" />
-      </div>
-      <div>
-        <label>表示名</label>
-        <input id="reg-display" placeholder="アリス" autocomplete="off" />
-      </div>
-    </div>
-    <div class="row">
-      <div>
-        <label>初期所持金 (円)</label>
-        <input id="reg-yen" type="number" value="1000" min="0" />
-      </div>
-      <div>
-        <label>現在地</label>
-        <select id="reg-loc"></select>
-      </div>
-    </div>
-    <button class="btn" onclick="register()" style="margin-top:14px"><svg><use href="#i-user-plus"/></svg> 登録する</button>
-  </div>
-
-  <div class="card">
-    <div class="card-head">
-      <span class="ic"><svg><use href="#i-coin"/></svg></span>
-      <h2>お金を払ってお願いする</h2>
-    </div>
-    <p class="card-help">財布から金額をエスクロー → 同じ場所の人に通知 → 誰かが承認 → 完了で金と評判が動く。</p>
-    <label>依頼者</label>
-    <select id="req-user"></select>
-    <div class="row">
-      <div>
-        <label>種類</label>
-        <select id="req-kind"></select>
-      </div>
-      <div>
-        <label>金額 (円)</label>
-        <input id="req-yen" type="number" value="100" min="0" />
-      </div>
-    </div>
-    <label>説明 (任意 / 「その他」は必須)</label>
-    <input id="req-desc" placeholder="新幹線で作業したいので" autocomplete="off" />
-    <button class="btn" onclick="postRequest()" style="margin-top:14px"><svg><use href="#i-zap"/></svg> お願いを通知</button>
-  </div>
-
-  <div class="card">
-    <div class="card-head">
-      <span class="ic"><svg><use href="#i-heart"/></svg></span>
-      <h2>自発的な親切を記録</h2>
-    </div>
-    <p class="card-help">お金が動かない親切。譲った人 +pt、譲られた人 −pt。時間帯ボーナスあり。</p>
-    <div class="row">
-      <div>
-        <label>譲った人</label>
-        <select id="sp-giver"></select>
-      </div>
-      <div>
-        <label>受けた人</label>
-        <select id="sp-receiver"></select>
-      </div>
-    </div>
-    <label>種類</label>
-    <select id="sp-kind"></select>
-    <label>メモ (任意)</label>
-    <input id="sp-note" placeholder="JR山手線で" autocomplete="off" />
-    <button class="btn" onclick="postSpontaneous()" style="margin-top:14px"><svg><use href="#i-heart"/></svg> 記録</button>
-  </div>
-
-  <div class="card">
-    <div class="card-head">
-      <span class="ic"><svg><use href="#i-wallet"/></svg></span>
-      <h2>ウォレットチャージ</h2>
-    </div>
-    <p class="card-help">デモ用の現金チャージ。本番なら Stripe / PayPay 経由。</p>
-    <div class="row">
-      <div>
-        <label>ユーザー</label>
-        <select id="top-user"></select>
-      </div>
-      <div>
-        <label>金額 (円)</label>
-        <input id="top-yen" type="number" value="1000" min="0" />
-      </div>
-    </div>
-    <button class="btn ghost" onclick="topup()" style="margin-top:14px"><svg><use href="#i-coin"/></svg> チャージ</button>
-  </div>
-
-  <details class="log">
-    <summary><svg><use href="#i-chevron-right"/></svg> API デバッグ (raw)</summary>
-    <pre id="log">ready.</pre>
-  </details>
-
-</div>
+</aside>
 
 </main>
 
 <div class="toasts" id="toasts"></div>
-
-<div id="onboarding" style="display:none">
-  <div class="modal-bg" onclick="dismissOnboarding(event)">
-    <div class="modal" onclick="event.stopPropagation()">
-      <h2>FavorGame へようこそ</h2>
-      <p class="lead">30秒だけ仕組みを。デモを始めるとサンプル5人＋進行中のお願いが入る。</p>
-      <div class="ob-list">
-        <div class="ob-row">
-          <div class="ic"><svg><use href="#i-heart"/></svg></div>
-          <div>
-            <h3>親切すると評判が貯まる</h3>
-            <p>席譲り、荷物持ち、傘の貸し借り、道案内、通訳、子守りまで12種類。種別ごとにレートあり。</p>
-          </div>
-        </div>
-        <div class="ob-row">
-          <div class="ic"><svg><use href="#i-zap"/></svg></div>
-          <div>
-            <h3>お金で瞬時に頼む</h3>
-            <p>100円払って席を譲ってもらう。300円で5分だけ子守り。同じ場所の人に通知が飛び、承認で取引が成立。</p>
-          </div>
-        </div>
-        <div class="ob-row">
-          <div class="ic"><svg><use href="#i-target"/></svg></div>
-          <div>
-            <h3>クエスト & ティア & 連続日数</h3>
-            <p>毎日の課題、6段ティア、ストリーク、12種のバッジ、リアクション。続けるほど世界が広がる。</p>
-          </div>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button class="btn" onclick="startWithDemo()"><svg><use href="#i-zap"/></svg> デモを始める</button>
-        <button class="btn ghost" onclick="dismissOnboarding()">自分で登録する</button>
-      </div>
-    </div>
-  </div>
+<div class="kbd-hint">
+  <kbd>F</kbd> 塗る <kbd>X</kbd> 印 <kbd>H</kbd> ヒント <kbd>R</kbd> リセット
 </div>
 
-<div id="celebration" style="display:none"></div>
-
+<!-- =====================================================================
+script
+====================================================================== -->
 <script>
-/* =====================================================================
- * lookup tables
- * ===================================================================== */
-const KIND_ICON = {
-  seat: "i-seat", luggage: "i-luggage", toilet: "i-toilet",
-  child: "i-child", generic: "i-sparkles",
-  directions: "i-directions", photo: "i-photo", umbrella: "i-umbrella",
-  charger: "i-charger", translate: "i-translate", pet: "i-pet", reach: "i-reach",
-};
-const KIND_LABEL = {
-  seat: "席を譲って", luggage: "荷物を持って", toilet: "トイレ順番",
-  child: "子供を見て", generic: "その他",
-  directions: "道案内", photo: "写真撮影", umbrella: "傘を貸して",
-  charger: "充電を貸して", translate: "通訳して", pet: "ペット見守り",
-  reach: "棚から取って",
-};
-const KIND_LIST = [
-  "seat", "luggage", "toilet", "child",
-  "umbrella", "directions", "translate",
-  "photo", "charger", "pet", "reach", "generic",
-];
+"use strict";
 
-const TIER_ICON = {
-  cloud:"i-cloud", sprout:"i-sprout", leaf:"i-leaf",
-  gem:"i-gem", star:"i-star", crown:"i-crown",
-};
-const ACH_ICON = {
-  seat:"i-seat", luggage:"i-luggage", toilet:"i-toilet",
-  child:"i-child", sprout:"i-sprout", yen:"i-yen",
-  lifebuoy:"i-lifebuoy", wallet:"i-wallet", handshake:"i-handshake",
-  sparkles:"i-sparkles", gem:"i-gem",
-};
-const QUEST_ICON = {
-  sparkles: "i-sparkles", handshake: "i-handshake", check: "i-check",
-};
-const TIER_VAR = {
-  debt: "var(--tier-debt)", newbie: "var(--tier-newbie)",
-  apprentice: "var(--tier-apprentice)", regular: "var(--tier-regular)",
-  master: "var(--tier-master)", sage: "var(--tier-sage)",
-};
-const REACTION_ORDER = ["heart", "thumb", "spark", "clap"];
-const REACTION_ICON = {
-  heart: "i-rx-heart", thumb: "i-rx-thumb",
-  spark: "i-rx-spark", clap: "i-rx-clap",
-};
-const REACTION_LABEL = {
-  heart: "いいね", thumb: "ナイス",
-  spark: "すごい", clap: "拍手",
-};
-
-function svg(id, size = 18) {
+/* ============================================================ icon util */
+function svgUse(id, size = 16) {
   return `<svg width="${size}" height="${size}" aria-hidden="true"><use href="#${id}"/></svg>`;
 }
 
-/* =====================================================================
- * deterministic identicon avatar
- * ===================================================================== */
-const AVATAR_PALETTE = [
-  "#f59e0b", "#fb7185", "#34d399", "#38bdf8",
-  "#a78bfa", "#fbbf24", "#f97316", "#06b6d4",
-];
-
-function hashStr(s) {
-  let h = 5381;
-  for (let i = 0; i < s.length; i++) {
-    h = ((h << 5) + h + s.charCodeAt(i)) >>> 0;
-  }
-  return h;
-}
-
-function avatarSvg(username, size = 36) {
-  if (!username) {
-    return `<svg width="${size}" height="${size}" viewBox="0 0 5 5" style="background:#0e1020;border-radius:8px"></svg>`;
-  }
-  const h = hashStr(username);
-  const color = AVATAR_PALETTE[h % AVATAR_PALETTE.length];
-  const bg = AVATAR_PALETTE[(h >>> 4) % AVATAR_PALETTE.length] + "22"; // soft tint
-  let cells = "";
-  // 5x5 grid mirrored left-right. The 0..2 column drives, columns 3..4 mirror.
-  for (let r = 0; r < 5; r++) {
-    for (let c = 0; c < 3; c++) {
-      const bit = (h >>> (r * 3 + c)) & 1;
-      if (!bit) continue;
-      cells += `<rect x="${c}" y="${r}" width="1" height="1"/>`;
-      if (c < 2) cells += `<rect x="${4 - c}" y="${r}" width="1" height="1"/>`;
-    }
-  }
-  return `<svg width="${size}" height="${size}" viewBox="0 0 5 5" style="background:${bg};border-radius:${Math.round(size*0.2)}px;display:block;fill:${color}">${cells}</svg>`;
-}
-
-/* =====================================================================
- * state
- * ===================================================================== */
-const LS_ME       = "favorgame.me";
-const LS_BADGES   = "favorgame.earned";
-const LS_TIER     = "favorgame.tier";
-const LS_ONBOARD  = "favorgame.onboarded";
-
-let state = {
-  me: localStorage.getItem(LS_ME) || "",
-  users: [], requests: [], inbox: [],
-  profile: null, prevPts: 0,
-  multipliers: [],
-  locations: [],
-  myLocation: "",
+/* ============================================================ storage */
+const LS = {
+  CURRENT: "oekaki.current",
+  GRID:    "oekaki.grid",       // per-puzzle state
+  STATS:   "oekaki.stats",      // global stats
+  CLEARED: "oekaki.cleared",    // set of cleared puzzle ids
+  STREAK:  "oekaki.streak",
 };
 
-/* =====================================================================
- * networking
- * ===================================================================== */
+function loadJSON(key, fallback) {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch { return fallback; }
+}
+function saveJSON(key, value) {
+  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
+}
+
+/* ============================================================ state */
+const Cell = { UNKNOWN: -1, EMPTY: 0, FILLED: 1 };
+
+const state = {
+  catalog: [],
+  filter: "all",
+  puzzle: null,
+  cells: [],            // 2D array of Cell.*
+  tool: "fill",         // "fill" | "mark"
+  startedAt: null,
+  elapsedMs: 0,
+  paused: false,
+  won: false,
+  hintCell: null,       // [r, c] of last-hinted cell (for pulse animation)
+};
+
+/* ============================================================ networking */
 async function api(method, path, body) {
-  const opts = { method, headers: {"Content-Type": "application/json"} };
+  const opts = { method, headers: { "Content-Type": "application/json" } };
   if (body !== undefined) opts.body = JSON.stringify(body);
   const res = await fetch(path, opts);
   const txt = await res.text();
-  let data;
-  try { data = JSON.parse(txt); } catch { data = txt; }
-  document.getElementById("log").textContent =
-    `[${method} ${path} -> ${res.status}]\n` +
-    (typeof data === "string" ? data : JSON.stringify(data, null, 2));
+  let data; try { data = JSON.parse(txt); } catch { data = txt; }
   if (!res.ok) throw new Error((data && data.error) || txt || `HTTP ${res.status}`);
   return data;
 }
 
-/* =====================================================================
- * toasts + celebrations
- * ===================================================================== */
-function toast(msg, kind = "ok") {
+/* ============================================================ toasts */
+function toast(msg, kind = "info") {
   const el = document.createElement("div");
   el.className = "toast " + kind;
-  const icon = kind === "err" ? "i-x"
-              : kind === "tier" ? "i-crown"
-              : kind === "info" ? "i-pulse"
-              : "i-check";
-  el.innerHTML = svg(icon, 16) + `<span>${escapeHTML(msg)}</span>`;
+  const icon = kind === "err" ? "i-x" : kind === "ok" ? "i-check" : "i-sparkle";
+  el.innerHTML = svgUse(icon, 14) + `<span>${escapeHTML(msg)}</span>`;
   document.getElementById("toasts").appendChild(el);
-  setTimeout(() => el.remove(), 3400);
+  setTimeout(() => el.remove(), 2800);
 }
-
-function celebrateTierUp(tier) {
-  const tierVar = TIER_VAR[tier.key] || "var(--accent)";
-  const icon = TIER_ICON[tier.icon] || "i-sprout";
-  const host = document.getElementById("celebration");
-  host.style.display = "block";
-  host.innerHTML = `
-    <div class="celebrate-bg" onclick="closeCelebration()">
-      <div class="celebrate" style="--tier-color: ${tierVar}">
-        <div class="crown">${svg(icon, 80)}</div>
-        <h2>ティアアップ</h2>
-        <div class="tier-name" style="color: ${tierVar}">${escapeHTML(tier.name)}</div>
-        <p>あなたの親切が、評判となって積み上がった。</p>
-        <button class="btn" onclick="closeCelebration()"><svg><use href="#i-check"/></svg> 続ける</button>
-      </div>
-    </div>`;
-  // Sprinkle sparkles around the modal.
-  const modal = host.querySelector(".celebrate");
-  for (let i = 0; i < 20; i++) {
-    const s = document.createElement("span");
-    s.className = "sparkle";
-    s.innerHTML = svg("i-rx-spark", 14);
-    const angle = Math.random() * Math.PI * 2;
-    const dist = 80 + Math.random() * 120;
-    const x = Math.cos(angle) * dist;
-    const y = Math.sin(angle) * dist;
-    s.style.setProperty("--end-transform", `translate(${x}px, ${y}px)`);
-    s.style.setProperty("--end-transform-far", `translate(${x * 1.4}px, ${y * 1.4}px)`);
-    s.style.left = "50%";
-    s.style.top = "50%";
-    s.style.animationDelay = (Math.random() * 0.4) + "s";
-    modal.appendChild(s);
-  }
-  setTimeout(closeCelebration, 4200);
-}
-function closeCelebration() {
-  const host = document.getElementById("celebration");
-  host.style.display = "none";
-  host.innerHTML = "";
-}
-
-/* =====================================================================
- * me / location
- * ===================================================================== */
-function setMe(username) {
-  state.me = username || "";
-  if (state.me) localStorage.setItem(LS_ME, state.me);
-  else localStorage.removeItem(LS_ME);
-  // Update the displayed my-location to follow the selected user.
-  const me = state.users.find(u => u.username === state.me);
-  state.myLocation = me ? me.location : "";
-  document.getElementById("loc-select").value = state.myLocation;
-  refreshAll();
-}
-
-async function setMyLocation(loc) {
-  state.myLocation = loc;
-  if (!state.me) {
-    toast("ユーザーを選んでから場所を変えて", "info");
-    return;
-  }
-  try {
-    await api("POST", `/api/users/${encodeURIComponent(state.me)}/location`,
-              { location: loc });
-    toast(loc ? `${state.locations.find(l => l.key === loc)?.name || loc} に移動` : "場所をクリア");
-    await refreshAll();
-  } catch (e) { toast(e.message, "err"); }
-}
-
-function renderLocationSelects() {
-  const opts = state.locations
-    .map(l => `<option value="${escapeHTML(l.key)}">${escapeHTML(l.name)}</option>`)
-    .join("");
-  for (const id of ["loc-select", "reg-loc"]) {
-    const sel = document.getElementById(id);
-    const cur = sel.value;
-    sel.innerHTML = (id === "loc-select" ? '<option value="">どこでも</option>' : '<option value="">どこでも</option>') + opts;
-    if (cur) sel.value = cur;
-  }
-  document.getElementById("loc-select").value = state.myLocation;
-}
-
-function renderKindSelects() {
-  const opts = KIND_LIST
-    .map(k => `<option value="${k}">${KIND_LABEL[k]}</option>`)
-    .join("");
-  for (const id of ["req-kind", "sp-kind"]) {
-    const sel = document.getElementById(id);
-    if (sel) sel.innerHTML = opts;
-  }
-}
-
-function renderUserSelects() {
-  const opts = state.users
-    .map(u => `<option value="${escapeHTML(u.username)}">${escapeHTML(u.display_name)} (@${escapeHTML(u.username)})</option>`)
-    .join("");
-  for (const id of ["me-select", "req-user", "sp-giver", "sp-receiver", "top-user"]) {
-    const el = document.getElementById(id);
-    const cur = el.value;
-    if (id === "me-select") {
-      el.innerHTML = '<option value="">あなた</option>' + opts;
-    } else {
-      el.innerHTML = opts;
-    }
-    if (id === "me-select") el.value = state.me;
-    else if (cur) el.value = cur;
-  }
-}
-
-/* =====================================================================
- * profile card
- * ===================================================================== */
-function renderProfile() {
-  const target = document.getElementById("profile-body");
-  document.getElementById("profile-rank").textContent = "";
-
-  if (!state.me || !state.profile) {
-    target.innerHTML = `
-      <div class="empty">
-        <div class="ic-bg">${svg("i-user-plus", 22)}</div>
-        <h3>あなたを選ぶか登録する</h3>
-        <p>右の「ユーザー登録」または上の「あなた」セレクタから。</p>
-      </div>`;
-    return;
-  }
-
-  const p = state.profile;
-  const tier = p.tier.tier;
-  const next = p.tier.next;
-  const ptsClass = p.user.points > 0 ? "pos" : p.user.points < 0 ? "neg" : "";
-  const tierVar = TIER_VAR[tier.key] || "var(--accent)";
-
-  // Tier-up detection.
-  const tierKey = LS_TIER + ":" + state.me;
-  const lastTier = localStorage.getItem(tierKey);
-  if (lastTier && lastTier !== tier.key) {
-    const lastRank = parseInt(localStorage.getItem(tierKey + ":rank") || "0", 10);
-    if (tier.rank > lastRank) celebrateTierUp(tier);
-  }
-  localStorage.setItem(tierKey, tier.key);
-  localStorage.setItem(tierKey + ":rank", String(tier.rank));
-
-  // Tier ring SVG (circumference 2π*30 ≈ 188.5).
-  const circ = 188.5;
-  const offset = circ * (1 - p.tier.progress);
-
-  // Avatar inside the ring.
-  const avatarHtml = avatarSvg(p.user.username, 56);
-
-  // Location badge.
-  const loc = p.location;
-  const locHtml = loc
-    ? `<span class="profile-loc">${svg("i-pin", 10)} ${escapeHTML(loc.name)}</span>`
-    : `<span class="profile-loc">${svg("i-pin", 10)} どこでも</span>`;
-
-  // Badge case.
-  const seenKey = LS_BADGES + ":" + state.me;
-  const previouslySeen = new Set(JSON.parse(localStorage.getItem(seenKey) || "[]"));
-  const recentlyEarned = new Set(
-    p.achievements.earned.map(a => a.achievement.id).filter(id => !previouslySeen.has(id))
-  );
-  localStorage.setItem(seenKey, JSON.stringify(p.achievements.earned.map(a => a.achievement.id)));
-
-  const cells = [
-    ...p.achievements.earned.map(a => ({ a, earned: true, in_prog: false })),
-    ...p.achievements.in_progress.map(a => ({ a, earned: false, in_prog: true })),
-    ...p.achievements.locked.map(a => ({ a, earned: false, in_prog: false })),
-  ].slice(0, 10);
-
-  const badgeHtml = cells.map(({a, earned, in_prog}) => {
-    const ach = a.achievement;
-    const iconId = ACH_ICON[ach.icon] || "i-sparkles";
-    const recentCls = earned && recentlyEarned.has(ach.id) ? " recent" : "";
-    const progBar = !earned && in_prog
-      ? `<span class="progress"><i style="width:${a.percent}%"></i></span>`
-      : "";
-    const tip = `${escapeHTML(ach.name)} — ${earned ? "達成" : in_prog ? `${a.progress}/${ach.target}` : "未開放"}`;
-    return `
-      <div class="badge${earned ? " earned" : ""}${recentCls}" title="${tip}">
-        ${svg(iconId, 22)}
-        ${progBar}
-        <span class="tip">${tip}</span>
-      </div>`;
-  }).join("");
-
-  if (recentlyEarned.size > 0 && previouslySeen.size > 0) {
-    for (const id of recentlyEarned) {
-      const ach = p.achievements.earned.find(a => a.achievement.id === id)?.achievement;
-      if (ach) toast(`バッジ獲得: ${ach.name}`, "info");
-    }
-  }
-
-  // Streak ribbon copy
-  const s = p.streak || { current: 0, longest: 0 };
-  const streakHtml = `
-    <div class="streak-ribbon">
-      <div class="streak-flame">${svg("i-flame", 18)}</div>
-      <div class="streak-text">
-        <div><b>${s.current}日</b> 連続</div>
-        <div class="streak-sub">過去最長 ${s.longest}日 — 今日も親切すると伸びる</div>
-      </div>
-    </div>`;
-
-  document.getElementById("profile-rank").textContent = p.rank ? `総合 ${p.rank}位` : "";
-
-  target.innerHTML = `
-    <div class="profile">
-      <div class="ring" style="--tier-color: ${tierVar}">
-        <svg class="bg-ring" viewBox="0 0 76 76" width="76" height="76">
-          <circle cx="38" cy="38" r="30" fill="none" stroke="rgba(255,255,255,0.07)" stroke-width="4"/>
-          <circle cx="38" cy="38" r="30" fill="none" stroke="${tierVar}" stroke-width="4"
-                  stroke-dasharray="${circ}" stroke-dashoffset="${offset}"
-                  stroke-linecap="round"/>
-        </svg>
-        <div class="ring-inner"><div class="avatar-host">${avatarHtml}</div></div>
-        <div class="tier-pip">${svg(TIER_ICON[tier.icon] || "i-sprout", 12)}</div>
-      </div>
-      <div class="profile-meta">
-        <div class="profile-name">${escapeHTML(p.user.display_name)} ${locHtml}</div>
-        <div class="profile-tier" style="--tier-color: ${tierVar}">
-          <b>${escapeHTML(tier.name)}</b>
-          ${next ? ` — 次「${escapeHTML(next.name)}」まで ${p.tier.points_to_next}pt` : ` — MAX ティア`}
-        </div>
-        <div class="profile-stats">
-          <div class="stat">
-            <span class="v pulse-on-update ${ptsClass}" id="me-pts-anim">${p.user.points}</span>
-            <span class="l">pt</span>
-          </div>
-          <div class="stat">
-            <span class="v">${p.user.wallet_yen}</span>
-            <span class="l">円</span>
-          </div>
-          <div class="stat">
-            <span class="v">${p.achievements.earned_count}<small style="font-size:11px;color:var(--muted);font-weight:500"> / ${p.achievements.total}</small></span>
-            <span class="l">バッジ</span>
-          </div>
-        </div>
-      </div>
-    </div>
-    ${streakHtml}
-    <div class="badges">
-      <div class="badges-head">
-        ${svg("i-trophy", 14)}
-        <span>バッジコレクション</span>
-        <span style="margin-left:auto"><b>${p.achievements.earned_count}</b> / ${p.achievements.total}</span>
-      </div>
-      <div class="badges-grid">${badgeHtml}</div>
-    </div>`;
-
-  if (state.prevPts !== p.user.points) {
-    const el = document.getElementById("me-pts-anim");
-    if (el) {
-      el.classList.add("bumping");
-      if (p.user.points < state.prevPts) el.classList.add("neg");
-      setTimeout(() => el.classList.remove("bumping", "neg"), 320);
-    }
-    state.prevPts = p.user.points;
-  }
-}
-
-/* =====================================================================
- * quests
- * ===================================================================== */
-function renderQuests() {
-  const target = document.getElementById("quests");
-  const meta = document.getElementById("quest-meta");
-  if (!state.profile || !state.profile.quests) {
-    target.innerHTML = `<div class="empty"><div class="ic-bg">${svg("i-target", 22)}</div><h3>あなたを選んで</h3><p>選ぶと今日の課題が出る。</p></div>`;
-    meta.textContent = "";
-    return;
-  }
-  const quests = state.profile.quests;
-  const done = quests.filter(q => q.completed).length;
-  meta.textContent = `${done}/${quests.length}`;
-  target.innerHTML = quests.map(q => {
-    const cls = q.completed ? " done" : "";
-    const iconId = QUEST_ICON[q.quest.icon] || "i-target";
-    return `
-      <div class="quest${cls}">
-        <div class="q-ic">${svg(iconId, 16)}</div>
-        <div>
-          <div class="q-title">${escapeHTML(q.quest.name)}</div>
-          <div class="q-desc">${escapeHTML(q.quest.description)}</div>
-        </div>
-        <div class="q-meter">
-          <span class="pct">${q.progress}/${q.quest.target}</span>
-          <div class="bar"><i style="width:${q.percent}%"></i></div>
-        </div>
-      </div>`;
-  }).join("");
-}
-
-/* =====================================================================
- * open requests
- * ===================================================================== */
-function renderOpenRequests() {
-  const open = state.requests.filter(r => r.status === "open" || r.status === "accepted");
-  const target = document.getElementById("open-feed");
-  document.getElementById("open-count").textContent = open.length ? `${open.length}件` : "";
-  if (!open.length) {
-    target.innerHTML = `
-      <div class="empty">
-        <div class="ic-bg">${svg("i-zap", 22)}</div>
-        <h3>今日は静かな駅</h3>
-        <p>誰かが新しいお願いを出すと、ここに並ぶ。</p>
-      </div>`;
-    return;
-  }
-  target.innerHTML = open.map(r => {
-    const requester = state.users.find(u => u.id === r.requester_id);
-    const accepter = state.users.find(u => u.id === r.accepter_id);
-    const isMine = requester && state.me === requester.username;
-    const isAccepterMe = accepter && state.me === accepter.username;
-    let actions = "";
-    if (r.status === "open") {
-      if (isMine) {
-        actions = `<button class="btn danger sm" onclick="cancelReq(${r.id})">${svg("i-x", 14)} 取り下げ</button>
-                   <span class="hint">承認を待っています</span>`;
-      } else if (state.me) {
-        actions = `<button class="btn sm" onclick="acceptVia(${r.id})">${svg("i-check", 14)} 引き受ける</button>`;
-      } else {
-        actions = `<span class="hint">承認するには上の「あなた」を選ぶ</span>`;
-      }
-    } else if (r.status === "accepted") {
-      if (isMine) {
-        actions = `<button class="btn sm" onclick="completeReq(${r.id})">${svg("i-check", 14)} 完了 (${escapeHTML(accepter?.display_name || "?")} に支払い)</button>
-                   <button class="btn danger sm" onclick="cancelReq(${r.id})">${svg("i-x", 14)} 取り下げ</button>`;
-      } else if (isAccepterMe) {
-        actions = `<span class="hint">引き受け中 — 依頼者の完了確認待ち</span>`;
-      } else {
-        actions = `<span class="hint"><b style="color:var(--info)">${escapeHTML(accepter?.display_name || "?")}</b> が引き受け中</span>`;
-      }
-    }
-    const sub = r.description ? r.description : KIND_LABEL[r.kind];
-    const statusCls = r.status === "accepted" ? " accepted" : "";
-    const statusText = r.status === "accepted" ? "引き受け中" : "募集中";
-    const locName = state.locations.find(l => l.key === r.location)?.name;
-    const locChip = locName ? `<span class="req-loc">${svg("i-pin", 10)} ${escapeHTML(locName)}</span>` : "";
-    return `
-      <div class="req">
-        <div class="req-head">
-          <div class="req-kind">${svg(KIND_ICON[r.kind] || "i-sparkles", 18)}</div>
-          <div>
-            <div class="req-title">${escapeHTML(requester?.display_name || "?")} の「${escapeHTML(KIND_LABEL[r.kind] || r.kind)}」${locChip}</div>
-            <div class="req-sub">${escapeHTML(sub)}</div>
-          </div>
-        </div>
-        <div class="req-yen">
-          <div class="amount">${r.bounty_yen}</div>
-          <div class="status${statusCls}">${statusText}</div>
-        </div>
-        <div class="req-actions">${actions}</div>
-      </div>`;
-  }).join("");
-}
-
-/* =====================================================================
- * leaderboard
- * ===================================================================== */
-function quickTier(points) {
-  if (points >= 1000) return { icon: "crown", var: "var(--tier-sage)" };
-  if (points >= 200)  return { icon: "star",  var: "var(--tier-master)" };
-  if (points >= 50)   return { icon: "gem",   var: "var(--tier-regular)" };
-  if (points >= 10)   return { icon: "leaf",  var: "var(--tier-apprentice)" };
-  if (points >= 0)    return { icon: "sprout",var: "var(--tier-newbie)" };
-  return { icon: "cloud", var: "var(--tier-debt)" };
-}
-
-function renderLeaderboard(board) {
-  const target = document.getElementById("lb");
-  if (!board.length) {
-    target.innerHTML = `<div class="empty"><div class="ic-bg">${svg("i-trophy", 22)}</div><h3>ユーザーが居ない</h3><p>登録すると、ここに並ぶ。</p></div>`;
-    return;
-  }
-  target.innerHTML = board.map(e => {
-    let rankCls = "";
-    if (e.rank === 1) rankCls = "gold";
-    else if (e.rank === 2) rankCls = "silver";
-    else if (e.rank === 3) rankCls = "bronze";
-    const ptCls = e.points > 0 ? "pos" : e.points < 0 ? "neg" : "";
-    const sign  = e.points >= 0 ? "+" : "";
-    const tier = quickTier(e.points);
-    return `
-      <div class="lb-row">
-        <div class="lb-rank ${rankCls}">${e.rank}</div>
-        <div class="lb-avatar">${avatarSvg(e.username, 28)}</div>
-        <div class="lb-who">
-          <div class="name" style="color: ${tier.var}">
-            <svg class="tier-mark"><use href="#${TIER_ICON[tier.icon]}"/></svg>
-            ${escapeHTML(e.display_name)}
-          </div>
-          <div class="uname">@${escapeHTML(e.username)}</div>
-        </div>
-        <div class="lb-pts ${ptCls}">${sign}${e.points}<small>pt</small></div>
-        <div class="lb-yen">¥${e.wallet_yen}</div>
-      </div>`;
-  }).join("");
-}
-
-/* =====================================================================
- * activity + reactions
- * ===================================================================== */
-function renderActivity(events) {
-  const target = document.getElementById("activity");
-  if (!events.length) {
-    target.innerHTML = `<div class="empty"><div class="ic-bg">${svg("i-pulse", 22)}</div><h3>まだ何も起きていない</h3><p>誰かが親切したり依頼を完了すると、ここに流れる。</p></div>`;
-    return;
-  }
-  target.innerHTML = events.map((e, idx) => {
-    let icon, cls, text;
-    let multTag = "";
-    if (e.kind === "paid") {
-      icon = "i-coin"; cls = "paid";
-      const ptDelta = e.points ? ` <span class="d pos">+${e.points}pt</span>` : "";
-      text = `<b>${escapeHTML(e.payer)}</b> → <b>${escapeHTML(e.payee)}</b>` +
-             ` <span class="d" style="color:var(--accent)">¥${e.yen}</span>${ptDelta}` +
-             (e.memo ? ` <span class="muted">(${escapeHTML(e.memo)})</span>` : "");
-    } else if (e.kind === "spontaneous") {
-      icon = KIND_ICON[e.favor] || "i-heart"; cls = "kind";
-      text = `<b>${escapeHTML(e.giver)}</b> が <b>${escapeHTML(e.receiver)}</b> に ${escapeHTML(KIND_LABEL[e.favor] || e.favor)}` +
-             ` <span class="d pos">+${e.giver_delta}pt</span> / <span class="d neg">${e.receiver_delta}pt</span>`;
-      if (e.multiplier && e.multiplier > 1) {
-        multTag = `<span class="mult-tag">${svg("i-bolt-fill", 10)} ${escapeHTML(e.multiplier_reason || "ボーナス")} ${e.multiplier}x</span>`;
-      }
-    } else if (e.kind === "cancelled") {
-      icon = "i-x"; cls = "cancel";
-      text = `<b>${escapeHTML(e.requester)}</b> が「${escapeHTML(KIND_LABEL[e.favor] || e.favor)}」(¥${e.yen}) を取り下げた`;
-    }
-    let reactionsHtml = "";
-    if (e.ref) {
-      const counts = e.reactions || {};
-      const total = Object.values(counts).reduce((a, b) => a + b, 0);
-      const chips = REACTION_ORDER
-        .filter(g => counts[g])
-        .map(g => `<button class="rx-chip" title="${REACTION_LABEL[g]}" onclick="toggleReaction('${e.ref.target}',${e.ref.id},'${g}')">${svg(REACTION_ICON[g], 11)} ${counts[g]}</button>`)
-        .join("");
-      const adder = `<span class="rx-add" onclick="toggleReactionPicker(event, '${e.ref.target}', ${e.ref.id}, ${idx})">${svg("i-rx-spark", 11)} ${total ? "" : "リアクション"}</span>`;
-      reactionsHtml = `<div class="ev-reactions" id="rx-${idx}">${chips}${adder}</div>`;
-    }
-    return `
-      <div class="ev">
-        <div class="ev-ic ${cls}">${svg(icon, 14)}</div>
-        <div class="ev-body">
-          <div class="ev-text">${text}${multTag}</div>
-          ${reactionsHtml}
-        </div>
-        <div class="ev-meta">${formatTime(e.at)}</div>
-      </div>`;
-  }).join("");
-}
-
-let _rxPickerOpen = null;
-function toggleReactionPicker(ev, target, targetId, idx) {
-  ev.stopPropagation();
-  if (_rxPickerOpen) {
-    _rxPickerOpen.remove();
-    _rxPickerOpen = null;
-  }
-  const anchor = ev.currentTarget;
-  const popover = document.createElement("div");
-  popover.className = "rx-popover";
-  popover.innerHTML = REACTION_ORDER.map(g =>
-    `<button title="${REACTION_LABEL[g]}" onclick="postReaction('${target}',${targetId},'${g}')">${svg(REACTION_ICON[g], 16)}</button>`
-  ).join("");
-  anchor.appendChild(popover);
-  _rxPickerOpen = popover;
-  // Close on outside click.
-  setTimeout(() => {
-    document.addEventListener("click", _outsideClose, { once: true });
-  }, 0);
-}
-function _outsideClose() {
-  if (_rxPickerOpen) {
-    _rxPickerOpen.remove();
-    _rxPickerOpen = null;
-  }
-}
-
-async function postReaction(target, targetId, glyph) {
-  if (!state.me) { toast("先に「あなた」を選んで", "err"); return; }
-  try {
-    await api("POST", "/api/reactions", {
-      user: state.me, target, target_id: targetId, glyph,
-    });
-    if (_rxPickerOpen) { _rxPickerOpen.remove(); _rxPickerOpen = null; }
-    await refreshAll();
-  } catch (e) { toast(e.message, "err"); }
-}
-
-async function toggleReaction(target, targetId, glyph) {
-  if (!state.me) { toast("先に「あなた」を選んで", "err"); return; }
-  try {
-    // For simplicity: re-post the same glyph (idempotent).
-    await api("POST", "/api/reactions", {
-      user: state.me, target, target_id: targetId, glyph,
-    });
-    await refreshAll();
-  } catch (e) { toast(e.message, "err"); }
-}
-
-/* =====================================================================
- * inbox
- * ===================================================================== */
-function renderInbox(notes) {
-  const target = document.getElementById("inbox-list");
-  if (!state.me) {
-    target.innerHTML = `<div class="empty"><div class="ic-bg">${svg("i-inbox", 22)}</div><h3>あなたを選んで</h3><p>選ぶと届いた通知が見える。</p></div>`;
-    document.getElementById("inbox-meta").textContent = "";
-    return;
-  }
-  const live = notes.filter(n => {
-    const req = state.requests.find(r => r.id === n.request_id);
-    return req && req.status === "open";
-  });
-  document.getElementById("inbox-meta").textContent = live.length ? `${live.length}件` : "";
-  if (!live.length) {
-    target.innerHTML = `<div class="empty"><div class="ic-bg">${svg("i-bell", 22)}</div><h3>未読の通知はない</h3><p>ありがたい、平和。</p></div>`;
-    return;
-  }
-  target.innerHTML = live.map(n => {
-    const req = state.requests.find(r => r.id === n.request_id);
-    const requester = state.users.find(u => u.id === req.requester_id);
-    const locName = state.locations.find(l => l.key === req.location)?.name;
-    const locChip = locName ? `<span class="req-loc">${svg("i-pin", 10)} ${escapeHTML(locName)}</span>` : "";
-    return `
-      <div class="inbox-item">
-        <div class="it-head">
-          <div class="it-kind">${svg(KIND_ICON[req.kind] || "i-sparkles", 16)}</div>
-          <div>
-            <div class="it-title"><b>${escapeHTML(requester?.display_name || "?")}</b> から「${escapeHTML(KIND_LABEL[req.kind] || req.kind)}」 ${locChip}</div>
-            <div class="it-sub">¥${req.bounty_yen}${req.description ? " · " + escapeHTML(req.description) : ""}</div>
-          </div>
-        </div>
-        <div class="it-actions">
-          <button class="btn sm" onclick="acceptVia(${req.id})">${svg("i-check", 14)} 承認</button>
-          <button class="btn danger sm" onclick="ignoreNote(${n.id})">${svg("i-x", 14)} 無視</button>
-        </div>
-      </div>`;
-  }).join("");
-}
-
-/* =====================================================================
- * multipliers strip
- * ===================================================================== */
-function renderMultipliers() {
-  const target = document.getElementById("multipliers");
-  if (!state.multipliers.length) {
-    target.innerHTML = "";
-    return;
-  }
-  target.innerHTML = state.multipliers.map(m =>
-    `<span class="mult">${svg("i-bolt-fill", 13)} <span>${escapeHTML(KIND_LABEL[m.kind] || m.kind)}</span> <b>${m.factor}x</b> · ${escapeHTML(m.reason)}</span>`
-  ).join("");
-}
-
-/* =====================================================================
- * actions
- * ===================================================================== */
-async function register() {
-  const username = val("reg-username");
-  const display_name = val("reg-display");
-  const starting_yen = parseInt(val("reg-yen") || "0", 10);
-  const location = val("reg-loc");
-  if (!username) return toast("ユーザー名を入れて", "err");
-  try {
-    await api("POST", "/api/users", { username, display_name, starting_yen, location });
-    toast(`${display_name || username} を登録した`);
-    if (!state.me) setMe(username);
-    clearForm(["reg-username", "reg-display"]);
-    await refreshAll();
-  } catch (e) { toast(e.message, "err"); }
-}
-
-async function postRequest() {
-  try {
-    const r = await api("POST", "/api/requests", {
-      requester: val("req-user"),
-      kind: val("req-kind"),
-      bounty_yen: parseInt(val("req-yen") || "0", 10),
-      description: val("req-desc"),
-    });
-    toast(`お願いを通知 ¥${r.bounty_yen}`);
-    clearForm(["req-desc"]);
-    await refreshAll();
-  } catch (e) { toast(e.message, "err"); }
-}
-
-async function postSpontaneous() {
-  const giver = val("sp-giver"), receiver = val("sp-receiver");
-  if (!giver || !receiver) return toast("譲った人と受けた人を選んで", "err");
-  if (giver === receiver)  return toast("同じ人は選べない", "err");
-  try {
-    const act = await api("POST", "/api/spontaneous", {
-      giver, receiver, kind: val("sp-kind"), note: val("sp-note"),
-    });
-    if (act.multiplier && act.multiplier > 1) {
-      toast(`${giver} の親切 ${act.multiplier_reason} ${act.multiplier}xボーナス`, "info");
-    } else {
-      toast(`${giver} の親切を記録`);
-    }
-    clearForm(["sp-note"]);
-    await refreshAll();
-  } catch (e) { toast(e.message, "err"); }
-}
-
-async function topup() {
-  try {
-    const r = await api("POST", "/api/topup", {
-      username: val("top-user"),
-      yen: parseInt(val("top-yen") || "0", 10),
-    });
-    toast(`${r.username} に ¥${parseInt(val("top-yen"), 10)} チャージ`);
-    await refreshAll();
-  } catch (e) { toast(e.message, "err"); }
-}
-
-async function acceptVia(requestId) {
-  if (!state.me) return toast("先に「あなた」を選んで", "err");
-  try {
-    await api("POST", `/api/requests/${requestId}/accept`, { accepter: state.me });
-    toast("引き受けた");
-    await refreshAll();
-  } catch (e) { toast(e.message, "err"); }
-}
-
-async function ignoreNote(notificationId) {
-  if (!state.me) return;
-  try {
-    await api("POST", `/api/notifications/${notificationId}/ignore`, { username: state.me });
-    toast("無視した");
-    await refreshAll();
-  } catch (e) { toast(e.message, "err"); }
-}
-
-async function completeReq(requestId) {
-  const req = state.requests.find(r => r.id === requestId);
-  if (!req) return;
-  const requester = state.users.find(u => u.id === req.requester_id);
-  if (!requester) return;
-  try {
-    await api("POST", `/api/requests/${requestId}/complete`, { requester: requester.username });
-    toast("完了 — 円と評判を移動した");
-    await refreshAll();
-  } catch (e) { toast(e.message, "err"); }
-}
-
-async function cancelReq(requestId) {
-  const req = state.requests.find(r => r.id === requestId);
-  if (!req) return;
-  const requester = state.users.find(u => u.id === req.requester_id);
-  if (!requester) return;
-  try {
-    await api("POST", `/api/requests/${requestId}/cancel`, { requester: requester.username });
-    toast("取り下げた");
-    await refreshAll();
-  } catch (e) { toast(e.message, "err"); }
-}
-
-/* =====================================================================
- * scenarios + onboarding
- * ===================================================================== */
-function seedScenario(kind, yen) {
-  document.getElementById("req-kind").value = kind;
-  document.getElementById("req-yen").value = yen;
-  document.getElementById("req-desc").value = "";
-  document.getElementById("req-desc").focus();
-  if (state.me && state.users.find(u => u.username === state.me)) {
-    document.getElementById("req-user").value = state.me;
-  }
-}
-
-function showOnboarding() {
-  document.getElementById("onboarding").style.display = "block";
-}
-function dismissOnboarding(ev) {
-  if (ev && ev.target.closest(".modal")) return;
-  document.getElementById("onboarding").style.display = "none";
-  localStorage.setItem(LS_ONBOARD, "1");
-}
-async function startWithDemo() {
-  dismissOnboarding();
-  try {
-    await api("POST", "/api/seed?force=true");
-    toast("デモデータを読み込んだ");
-    setMe("alice");
-  } catch (e) { toast(e.message, "err"); }
-}
-
-/* =====================================================================
- * loaders
- * ===================================================================== */
-async function refreshAll() {
-  try {
-    const [users, requests, board, events, multipliers, locations] = await Promise.all([
-      api("GET", "/api/users"),
-      api("GET", "/api/requests"),
-      api("GET", "/api/leaderboard"),
-      api("GET", "/api/activity?limit=30"),
-      api("GET", "/api/multipliers"),
-      state.locations.length ? Promise.resolve(state.locations) : api("GET", "/api/locations"),
-    ]);
-    state.users = users;
-    state.requests = requests;
-    state.multipliers = multipliers;
-    state.locations = locations;
-    renderUserSelects();
-    renderLocationSelects();
-    renderKindSelects();
-    renderMultipliers();
-    renderLeaderboard(board);
-    renderActivity(events);
-    renderOpenRequests();
-    await loadProfile();
-    await loadInbox();
-    renderQuests();
-  } catch (e) {
-    toast("読み込み失敗: " + e.message, "err");
-  }
-}
-
-async function loadProfile() {
-  if (!state.me) { state.profile = null; renderProfile(); renderQuests(); return; }
-  try {
-    state.profile = await api("GET", "/api/profile/" + encodeURIComponent(state.me));
-    renderProfile();
-    renderQuests();
-  } catch (e) {
-    state.profile = null; renderProfile(); renderQuests();
-  }
-}
-
-async function loadInbox() {
-  if (!state.me) { renderInbox([]); return; }
-  try {
-    const notes = await api("GET", "/api/inbox/" + encodeURIComponent(state.me));
-    state.inbox = notes;
-    renderInbox(notes);
-  } catch { renderInbox([]); }
-}
-
-/* =====================================================================
- * utils
- * ===================================================================== */
-function val(id) { const el = document.getElementById(id); return el ? el.value.trim() : ""; }
-function clearForm(ids) { ids.forEach(id => { const el = document.getElementById(id); if (el) el.value = ""; }); }
 function escapeHTML(s) {
-  return String(s == null ? "" : s).replace(/[&<>"']/g,
+  return String(s ?? "").replace(/[&<>"']/g,
     c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 }
-function formatTime(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  const sec = Math.max(0, Math.floor((Date.now() - d.getTime()) / 1000));
-  if (sec < 60)    return `${sec}秒前`;
-  if (sec < 3600)  return `${Math.floor(sec/60)}分前`;
-  if (sec < 86400) return `${Math.floor(sec/3600)}時間前`;
-  return d.toLocaleDateString("ja-JP");
+
+/* ============================================================ time format */
+function formatMs(ms) {
+  if (!Number.isFinite(ms) || ms < 0) ms = 0;
+  const total = Math.floor(ms / 1000);
+  const m = Math.floor(total / 60);
+  const s = total % 60;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-/* =====================================================================
- * boot
- * ===================================================================== */
-(async function boot() {
-  await refreshAll();
-  if (!localStorage.getItem(LS_ONBOARD) && state.users.length === 0) {
-    showOnboarding();
+/* ============================================================ catalog */
+async function loadCatalog() {
+  const items = await api("GET", "/api/puzzles");
+  state.catalog = items;
+  document.getElementById("cleared-total").textContent = items.length;
+  renderPicker();
+}
+
+function clearedSet() {
+  return new Set(loadJSON(LS.CLEARED, []));
+}
+function markCleared(id) {
+  const s = clearedSet();
+  s.add(id);
+  saveJSON(LS.CLEARED, [...s]);
+  refreshTopStats();
+}
+
+function refreshTopStats() {
+  const s = clearedSet();
+  document.getElementById("cleared-pill").textContent = s.size;
+  document.getElementById("stat-cleared").innerHTML =
+    `${s.size}<small> / ${state.catalog.length}</small>`;
+  // Streak
+  const streak = loadJSON(LS.STREAK, { current: 0, last: null });
+  document.getElementById("streak-pill").textContent = streak.current;
+  document.getElementById("stat-streak").innerHTML = `${streak.current}<small>日</small>`;
+  // Total time
+  const stats = loadJSON(LS.STATS, { total_ms: 0 });
+  const sec = Math.floor((stats.total_ms || 0) / 1000);
+  document.getElementById("stat-total-time").innerHTML =
+    sec < 3600 ? `${sec}<small>秒</small>` :
+    `${Math.floor(sec/60)}<small>分</small>`;
+}
+
+/* ============================================================ picker */
+function renderPicker() {
+  const cleared = clearedSet();
+  const visible = state.filter === "all"
+    ? state.catalog
+    : state.catalog.filter(p => p.difficulty === state.filter);
+  const target = document.getElementById("picker");
+  target.innerHTML = visible.map(p => {
+    const isActive = state.puzzle && state.puzzle.id === p.id;
+    const isCleared = cleared.has(p.id);
+    return `
+      <div class="pick-item ${isActive ? "active" : ""}" onclick="loadPuzzle('${p.id}')">
+        <div class="pick-thumb">${thumbnailSvg(p)}</div>
+        <div>
+          <div class="pick-name">${escapeHTML(p.title)}</div>
+          <div class="pick-sub">${p.rows}×${p.cols} · ${diffLabel(p.difficulty)}</div>
+        </div>
+        <div class="pick-state ${isCleared ? "done" : ""}">
+          ${isCleared ? svgUse("i-check", 11) + bestTimeFor(p.id) : ""}
+        </div>
+      </div>`;
+  }).join("");
+}
+
+function bestTimeFor(id) {
+  const stats = loadJSON(LS.STATS, {});
+  const best = stats.best && stats.best[id];
+  return best ? `<span style="margin-left:3px">${formatMs(best)}</span>` : "";
+}
+
+function diffLabel(d) {
+  return { tiny: "小", easy: "易", medium: "中", hard: "難" }[d] || d;
+}
+
+function thumbnailSvg(p) {
+  // Render the puzzle silhouette WITHOUT giving away exact solution.
+  // We don't have the solution at this point, so we show clue-density:
+  // a tiny grid where each cell is darkened by the sum of clue lengths.
+  const cells = Math.max(p.rows, p.cols);
+  const cs = 28;
+  const sq = Math.floor((cs - 2) / cells);
+  let svg = `<svg width="${cs}" height="${cs}" viewBox="0 0 ${cs} ${cs}">`;
+  svg += `<rect x="0" y="0" width="${cs}" height="${cs}" fill="#fafaf6"/>`;
+  // Stripes from row clues — total fill density
+  for (let r = 0; r < p.rows; r++) {
+    const sum = (p.row_clues[r] || []).reduce((a, b) => a + b, 0);
+    const density = sum / p.cols;
+    const w = Math.round(density * (cs - 2));
+    svg += `<rect x="1" y="${1 + r * sq}" width="${w}" height="${sq}" fill="#1a1f2c" opacity="0.45"/>`;
   }
-  setInterval(refreshAll, 8000);
+  svg += `</svg>`;
+  return svg;
+}
+
+document.getElementById("diff-tabs").addEventListener("click", (ev) => {
+  const btn = ev.target.closest("button[data-diff]");
+  if (!btn) return;
+  state.filter = btn.dataset.diff;
+  for (const b of document.querySelectorAll("#diff-tabs button")) {
+    b.classList.toggle("active", b === btn);
+  }
+  renderPicker();
+});
+
+/* ============================================================ board render */
+function emptyCells(rows, cols) {
+  return Array.from({length: rows}, () => Array(cols).fill(Cell.UNKNOWN));
+}
+
+function gridKey(puzzleId) { return `${LS.GRID}:${puzzleId}`; }
+
+async function loadPuzzle(id) {
+  // Save current state first.
+  saveCurrent();
+  const fresh = await api("GET", `/api/puzzles/${encodeURIComponent(id)}`);
+  state.puzzle = fresh;
+  // Restore cells from localStorage if present, else start fresh.
+  const saved = loadJSON(gridKey(id), null);
+  state.cells = saved && saved.cells && saved.cells.length === fresh.rows
+    ? saved.cells.map(r => r.slice())
+    : emptyCells(fresh.rows, fresh.cols);
+  state.elapsedMs = (saved && saved.elapsed_ms) || 0;
+  state.startedAt = null;
+  state.paused = !!(saved && saved.completed);
+  state.won = !!(saved && saved.completed);
+  state.hintCell = null;
+  saveJSON(LS.CURRENT, id);
+  renderBoard();
+  renderPicker();
+  startTimerIfNeeded(false);
+}
+
+function renderBoard() {
+  const p = state.puzzle;
+  if (!p) return;
+  document.getElementById("title").textContent = p.title;
+  document.getElementById("size").textContent = `${p.rows}×${p.cols}`;
+  const tag = document.getElementById("diff-tag");
+  tag.textContent = diffLabel(p.difficulty);
+  tag.className = "puzzle-diff " + p.difficulty;
+
+  // Compute clue-column-height (max number of row-clue entries) and
+  // clue-row-width (max number of column-clue entries) so the corner
+  // grid cell sizes properly.
+  const maxRowClues = Math.max(1, ...p.row_clues.map(c => c.length));
+  const maxColClues = Math.max(1, ...p.col_clues.map(c => c.length));
+
+  const grid = document.getElementById("grid");
+  grid.style.gridTemplateColumns =
+    `auto repeat(${p.cols}, var(--cell))`;
+  grid.style.gridTemplateRows =
+    `auto repeat(${p.rows}, var(--cell))`;
+
+  let html = `<div class="corner"></div>`;
+  // column clues
+  for (let c = 0; c < p.cols; c++) {
+    const clue = p.col_clues[c];
+    const major = (c % 5 === 4) && c < p.cols - 1 ? " major-right" : "";
+    html += `<div class="ccol${major}" data-col="${c}">`;
+    if (!clue.length) html += `<span class="satisfied">·</span>`;
+    else for (const n of clue) html += `<span data-n="${n}">${n}</span>`;
+    html += `</div>`;
+  }
+  // body rows
+  for (let r = 0; r < p.rows; r++) {
+    const clue = p.row_clues[r];
+    const majorB = (r % 5 === 4) && r < p.rows - 1 ? " major-bottom" : "";
+    html += `<div class="crow${majorB}" data-row="${r}">`;
+    if (!clue.length) html += `<span class="satisfied">·</span>`;
+    else for (const n of clue) html += `<span data-n="${n}">${n}</span>`;
+    html += `</div>`;
+    for (let c = 0; c < p.cols; c++) {
+      const v = state.cells[r][c];
+      const major = ((c % 5 === 4) && c < p.cols - 1 ? " major-right" : "") +
+                    ((r % 5 === 4) && r < p.rows - 1 ? " major-bottom" : "");
+      html += `<div class="cell${major}" data-v="${v}" data-r="${r}" data-c="${c}">
+        <svg class="glyph"><use href="#i-mark"/></svg>
+      </div>`;
+    }
+  }
+  grid.innerHTML = html;
+  updateClueSatisfaction();
+  updateProgress();
+  setupGridInput();
+  setTool(state.tool);  // sync button styles
+}
+
+/* ============================================================ clue striking */
+function updateClueSatisfaction() {
+  const p = state.puzzle;
+  if (!p) return;
+  for (let r = 0; r < p.rows; r++) {
+    const runs = computeRuns(state.cells[r]);
+    markSatisfied(`.crow[data-row="${r}"]`, p.row_clues[r], runs);
+  }
+  for (let c = 0; c < p.cols; c++) {
+    const col = state.cells.map(row => row[c]);
+    const runs = computeRuns(col);
+    markSatisfied(`.ccol[data-col="${c}"]`, p.col_clues[c], runs);
+  }
+}
+function computeRuns(line) {
+  const out = [];
+  let run = 0;
+  for (const v of line) {
+    if (v === Cell.FILLED) run++;
+    else { if (run) out.push(run); run = 0; }
+  }
+  if (run) out.push(run);
+  return out;
+}
+function markSatisfied(selector, clueList, runs) {
+  const host = document.querySelector(selector);
+  if (!host) return;
+  const spans = [...host.querySelectorAll("span[data-n]")];
+  if (!spans.length) return;
+  // A clue is "satisfied" if the player's runs exactly match it as a prefix
+  // (so [3, 2, 1] partially crossed off as [3, 2] strikes the first two).
+  // Strict equality at the same index.
+  let okPrefix = 0;
+  for (let i = 0; i < clueList.length && i < runs.length; i++) {
+    if (clueList[i] === runs[i]) okPrefix++;
+    else break;
+  }
+  // If full exact match, all spans struck.
+  const fullMatch = clueList.length === runs.length &&
+    clueList.every((v, i) => v === runs[i]);
+  spans.forEach((s, i) => {
+    s.classList.toggle("satisfied",
+      fullMatch || (i < okPrefix && i < clueList.length));
+  });
+}
+
+/* ============================================================ progress */
+function updateProgress() {
+  const p = state.puzzle;
+  if (!p) return;
+  let totalFilled = 0;
+  for (const row of p.row_clues) totalFilled += row.reduce((a, b) => a + b, 0);
+  let playerFilled = 0;
+  for (const row of state.cells) for (const v of row) if (v === Cell.FILLED) playerFilled++;
+  document.getElementById("prog-text").textContent = `${playerFilled}/${totalFilled}`;
+}
+
+/* ============================================================ pointer input */
+let drag = null;   // { value: Cell.*, lastR, lastC }
+
+function setupGridInput() {
+  const grid = document.getElementById("grid");
+  grid.addEventListener("pointerdown", onPointerDown);
+  grid.addEventListener("pointermove", onPointerMove);
+  document.addEventListener("pointerup", onPointerUp);
+  grid.addEventListener("contextmenu", e => e.preventDefault());
+}
+
+function cellAt(target) {
+  const el = target.closest(".cell");
+  if (!el) return null;
+  return { r: +el.dataset.r, c: +el.dataset.c, el };
+}
+
+function onPointerDown(ev) {
+  if (state.won) return;
+  const cell = cellAt(ev.target);
+  if (!cell) return;
+  ev.preventDefault();
+  ev.target.setPointerCapture && ev.target.setPointerCapture(ev.pointerId);
+
+  // Determine the value we will toggle TO based on current state.
+  const current = state.cells[cell.r][cell.c];
+  // Right-click (or button === 2) flips behavior: temporarily use the
+  // OTHER tool for this gesture.
+  const tool = (ev.button === 2 || ev.shiftKey) ? otherTool(state.tool) : state.tool;
+  let nextValue;
+  if (tool === "fill") {
+    nextValue = current === Cell.FILLED ? Cell.UNKNOWN : Cell.FILLED;
+  } else {
+    nextValue = current === Cell.EMPTY ? Cell.UNKNOWN : Cell.EMPTY;
+  }
+  drag = { value: nextValue, lastR: cell.r, lastC: cell.c, axis: null };
+  applyCell(cell.r, cell.c, nextValue);
+}
+
+function onPointerMove(ev) {
+  if (!drag) return;
+  const cell = cellAt(document.elementFromPoint(ev.clientX, ev.clientY));
+  if (!cell) return;
+  if (cell.r === drag.lastR && cell.c === drag.lastC) return;
+  // Lock to row OR column axis after first move, to prevent diagonal drags
+  // from looking sloppy.
+  if (drag.axis === null) {
+    drag.axis = (cell.r === drag.lastR) ? "row" : "col";
+  }
+  if (drag.axis === "row" && cell.r !== drag.lastR) return;
+  if (drag.axis === "col" && cell.c !== drag.lastC) return;
+  applyCell(cell.r, cell.c, drag.value);
+  drag.lastR = cell.r; drag.lastC = cell.c;
+}
+
+function onPointerUp() {
+  if (drag) {
+    drag = null;
+    saveCurrent();
+    checkComplete();
+  }
+}
+
+function otherTool(t) { return t === "fill" ? "mark" : "fill"; }
+
+function applyCell(r, c, value) {
+  if (state.cells[r][c] === value) return;
+  state.cells[r][c] = value;
+  const el = document.querySelector(`.cell[data-r="${r}"][data-c="${c}"]`);
+  if (el) {
+    el.dataset.v = String(value);
+    el.removeAttribute("data-mistake");
+  }
+  updateClueSatisfaction();
+  updateProgress();
+  startTimerIfNeeded(true);
+}
+
+/* ============================================================ tools */
+function setTool(t) {
+  state.tool = t;
+  document.getElementById("tool-fill").classList.toggle("active", t === "fill");
+  document.getElementById("tool-mark").classList.toggle("active", t === "mark");
+}
+
+function resetGrid() {
+  if (!state.puzzle) return;
+  if (!state.won && !confirm("リセットする?")) return;
+  state.cells = emptyCells(state.puzzle.rows, state.puzzle.cols);
+  state.elapsedMs = 0;
+  state.startedAt = null;
+  state.paused = false;
+  state.won = false;
+  state.hintCell = null;
+  saveCurrent();
+  renderBoard();
+  toast("リセットした", "ok");
+}
+
+async function askHint() {
+  if (!state.puzzle || state.won) return;
+  startTimerIfNeeded(true);
+  try {
+    const r = await api("POST", "/api/hint", {
+      puzzle_id: state.puzzle.id,
+      cells: state.cells,
+    });
+    if (!r.hint) {
+      toast("論理だけでは進めない。推測してみて。", "info");
+      return;
+    }
+    const { r: hr, c: hc, value } = r.hint;
+    applyCell(hr, hc, value);
+    saveCurrent();
+    // Pulse the cell.
+    const el = document.querySelector(`.cell[data-r="${hr}"][data-c="${hc}"]`);
+    if (el) {
+      el.classList.remove("hint-pulse");
+      void el.offsetWidth;  // restart animation
+      el.classList.add("hint-pulse");
+    }
+    checkComplete();
+  } catch (e) { toast(e.message, "err"); }
+}
+
+/* ============================================================ timer */
+let timerHandle = null;
+function startTimerIfNeeded(userAction) {
+  if (state.won) return;
+  if (!state.startedAt) {
+    state.startedAt = Date.now() - state.elapsedMs;
+  }
+  if (timerHandle === null) {
+    timerHandle = setInterval(tickClock, 500);
+  }
+  if (userAction) document.getElementById("clock").classList.remove("paused");
+}
+
+function tickClock() {
+  if (!state.startedAt || state.won) return;
+  state.elapsedMs = Date.now() - state.startedAt;
+  document.getElementById("clock-text").textContent = formatMs(state.elapsedMs);
+}
+
+function stopTimer() {
+  clearInterval(timerHandle);
+  timerHandle = null;
+}
+
+document.addEventListener("visibilitychange", () => {
+  // Pause when tab loses focus so people don't accidentally "play"
+  // for 6 hours while at lunch.
+  if (document.hidden) {
+    if (state.startedAt) {
+      state.elapsedMs = Date.now() - state.startedAt;
+      state.startedAt = null;
+      saveCurrent();
+      document.getElementById("clock").classList.add("paused");
+    }
+  } else if (!state.won && !state.startedAt) {
+    // Don't auto-restart on focus return — wait for next user action.
+  }
+});
+
+/* ============================================================ persistence */
+function saveCurrent() {
+  if (!state.puzzle) return;
+  saveJSON(gridKey(state.puzzle.id), {
+    cells: state.cells,
+    elapsed_ms: state.elapsedMs,
+    completed: state.won,
+  });
+}
+
+/* ============================================================ completion */
+async function checkComplete() {
+  if (!state.puzzle || state.won) return;
+  try {
+    const r = await api("POST", "/api/validate", {
+      puzzle_id: state.puzzle.id,
+      cells: state.cells,
+    });
+    // Highlight mistakes (transient)
+    for (const el of document.querySelectorAll(".cell[data-mistake]")) {
+      el.removeAttribute("data-mistake");
+    }
+    for (const [mr, mc] of r.mistakes) {
+      const el = document.querySelector(`.cell[data-r="${mr}"][data-c="${mc}"]`);
+      if (el) el.dataset.mistake = "1";
+    }
+    if (r.complete) {
+      onWin();
+    }
+  } catch (e) { /* swallow — validation failure ≠ play failure */ }
+}
+
+function onWin() {
+  state.won = true;
+  stopTimer();
+  document.getElementById("clock").classList.add("won");
+  // Update streak.
+  updateStreak();
+  // Update best time.
+  const stats = loadJSON(LS.STATS, { total_ms: 0, best: {} });
+  stats.total_ms = (stats.total_ms || 0) + state.elapsedMs;
+  const prevBest = stats.best?.[state.puzzle.id];
+  const isNewBest = !prevBest || state.elapsedMs < prevBest;
+  if (!stats.best) stats.best = {};
+  if (isNewBest) stats.best[state.puzzle.id] = state.elapsedMs;
+  saveJSON(LS.STATS, stats);
+  document.getElementById("stat-best").textContent =
+    formatMs(stats.best[state.puzzle.id]);
+  markCleared(state.puzzle.id);
+  saveCurrent();
+  showWin(isNewBest, prevBest);
+  refreshTopStats();
+  renderPicker();
+}
+
+function updateStreak() {
+  const today = new Date().toISOString().slice(0, 10);
+  const s = loadJSON(LS.STREAK, { current: 0, last: null });
+  if (s.last === today) return;
+  // If last was yesterday, increment. Otherwise reset to 1.
+  const y = new Date();
+  y.setDate(y.getDate() - 1);
+  const yesterday = y.toISOString().slice(0, 10);
+  if (s.last === yesterday) s.current += 1;
+  else s.current = 1;
+  s.last = today;
+  saveJSON(LS.STREAK, s);
+}
+
+function showWin(isNewBest, prevBest) {
+  const p = state.puzzle;
+  const host = document.createElement("div");
+  host.className = "win-bg";
+  host.onclick = (ev) => { if (ev.target === host) host.remove(); };
+  // Show the puzzle's actual solution as a satisfying reveal.
+  const cellSize = 12;
+  const w = p.cols * cellSize;
+  const h = p.rows * cellSize;
+  let svgGrid = `<svg viewBox="0 0 ${w} ${h}" class="preview" preserveAspectRatio="xMidYMid meet"><rect width="${w}" height="${h}" fill="#fafaf6"/>`;
+  for (let r = 0; r < p.rows; r++) {
+    for (let c = 0; c < p.cols; c++) {
+      if (state.cells[r][c] === Cell.FILLED) {
+        svgGrid += `<rect x="${c * cellSize}" y="${r * cellSize}" width="${cellSize}" height="${cellSize}" fill="#1a1f2c"/>`;
+      }
+    }
+  }
+  svgGrid += `</svg>`;
+  host.innerHTML = `
+    <div class="win-card">
+      <h2>クリア!</h2>
+      ${isNewBest ? `<div class="pb-badge">${svgUse("i-trophy", 12)} ベスト更新</div>` : ""}
+      ${svgGrid}
+      <div class="time-big">${formatMs(state.elapsedMs)}</div>
+      <div class="row">
+        <div class="col">
+          <div>このパズル</div>
+          <div class="v">${escapeHTML(p.title)}</div>
+        </div>
+        <div class="col">
+          <div>${isNewBest ? "前回ベスト" : "ベスト"}</div>
+          <div class="v">${prevBest ? formatMs(prevBest) : "—"}</div>
+        </div>
+      </div>
+      <div class="win-actions">
+        <button class="tool" onclick="this.closest('.win-bg').remove()">${svgUse("i-x", 14)} 閉じる</button>
+        <button class="tool primary" onclick="this.closest('.win-bg').remove(); loadNext();">${svgUse("i-arrow-right", 14)} 次のパズル</button>
+      </div>
+    </div>`;
+  document.body.appendChild(host);
+  // Confetti.
+  const card = host.querySelector(".win-card");
+  const palette = ["#dc2626", "#f59e0b", "#059669", "#3b82f6", "#1a1f2c"];
+  for (let i = 0; i < 30; i++) {
+    const s = document.createElement("span");
+    s.className = "win-confetti";
+    const angle = Math.random() * Math.PI * 2;
+    const dist = 60 + Math.random() * 220;
+    const x = Math.cos(angle) * dist;
+    const y = Math.sin(angle) * dist;
+    s.style.setProperty("--end", `translate(${x}px, ${y}px)`);
+    s.style.background = palette[i % palette.length];
+    s.style.animationDelay = (Math.random() * 0.2) + "s";
+    card.appendChild(s);
+  }
+}
+
+function loadNext() {
+  const idx = state.catalog.findIndex(p => p.id === state.puzzle?.id);
+  const next = state.catalog[(idx + 1) % state.catalog.length];
+  loadPuzzle(next.id);
+}
+
+/* ============================================================ keyboard */
+document.addEventListener("keydown", (ev) => {
+  if (ev.target.tagName === "INPUT" || ev.target.tagName === "TEXTAREA") return;
+  if (ev.key === "f" || ev.key === "F") setTool("fill");
+  else if (ev.key === "x" || ev.key === "X") setTool("mark");
+  else if (ev.key === "h" || ev.key === "H") askHint();
+  else if (ev.key === "r" || ev.key === "R") resetGrid();
+});
+
+/* ============================================================ boot */
+(async function boot() {
+  refreshTopStats();
+  try {
+    await loadCatalog();
+  } catch (e) { toast("読み込み失敗: " + e.message, "err"); return; }
+
+  // Pick where we left off, or fall back to today.
+  const last = localStorage.getItem(LS.CURRENT);
+  let id = last && state.catalog.find(p => p.id === last) ? last : null;
+  if (!id) {
+    try {
+      const today = await api("GET", "/api/today");
+      id = today.id;
+    } catch { id = state.catalog[0]?.id; }
+  }
+  if (id) await loadPuzzle(id);
 })();
 </script>
 </body>
