@@ -11,15 +11,12 @@
 <link rel="manifest" href="/manifest.json" />
 <link rel="icon" type="image/svg+xml" href="/icon.svg" />
 <link rel="apple-touch-icon" href="/icon.svg" />
-<title>たすけて — ご近所のちょっとしたお願い</title>
+<title>たすけて — 通りすがりの人に、ちゃんと頼める</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Inter:wght@500;600;700&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>
-  /* =====================================================================
-   *  tokens
-   * ===================================================================== */
   :root {
     --bg-0:        #fdfaf2;
     --bg-1:        #f3eedd;
@@ -36,6 +33,9 @@
     --good:        #059669;
     --danger:      #dc2626;
     --info:        #2563eb;
+    --cat-spot:    #2563eb;
+    --cat-photo:   #be185d;
+    --cat-scout:   #047857;
     --radius-sm:   10px;
     --radius:      14px;
     --radius-lg:   20px;
@@ -47,9 +47,6 @@
     --nav-h:       64px;
   }
 
-  /* =====================================================================
-   *  reset / global
-   * ===================================================================== */
   *, *::before, *::after { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   html, body { margin: 0; padding: 0; height: 100%; overscroll-behavior-y: none; }
   body {
@@ -62,35 +59,22 @@
     color: var(--ink);
     line-height: 1.55;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
     overflow-x: hidden;
     min-height: 100dvh;
   }
   button { font-family: inherit; }
   ::selection { background: rgba(232, 93, 4, 0.2); }
 
-  /* =====================================================================
-   *  app shell
-   * ===================================================================== */
-  #app {
-    display: flex;
-    flex-direction: column;
-    min-height: 100dvh;
-    padding-bottom: calc(var(--nav-h) + var(--safe-bot));
-  }
+  #app { display: flex; flex-direction: column; min-height: 100dvh; padding-bottom: calc(var(--nav-h) + var(--safe-bot)); }
 
   .topbar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    display: flex; align-items: center; justify-content: space-between;
     gap: 8px;
     padding: calc(8px + var(--safe-top)) 16px 8px;
     background: rgba(253, 250, 242, 0.92);
     border-bottom: 1px solid var(--rule);
     backdrop-filter: blur(20px);
-    position: sticky;
-    top: 0;
-    z-index: 50;
+    position: sticky; top: 0; z-index: 50;
   }
   .brand { display: flex; align-items: center; gap: 9px; }
   .brand-mark {
@@ -104,17 +88,12 @@
   .brand-mark svg { width: 17px; height: 17px; }
   .brand-name {
     font-family: "Inter", "Noto Sans JP", sans-serif;
-    font-weight: 700;
-    color: var(--ink);
-    font-size: 16px;
-    line-height: 1;
+    font-weight: 700; color: var(--ink);
+    font-size: 16px; line-height: 1;
     letter-spacing: -0.005em;
   }
-  .brand-tag {
-    font-size: 11px;
-    color: var(--muted);
-    line-height: 1.4;
-  }
+  .brand-tag { font-size: 11px; color: var(--muted); line-height: 1.4; }
+
   .top-actions { display: flex; gap: 6px; align-items: center; }
   .icon-btn {
     width: 36px; height: 36px;
@@ -128,9 +107,7 @@
   }
   .icon-btn:active { transform: scale(0.96); }
   .icon-btn svg { width: 16px; height: 16px; }
-  .icon-btn[disabled] { opacity: 0.4; }
 
-  /* main scroll area */
   main {
     flex: 1;
     max-width: 720px;
@@ -139,19 +116,13 @@
     padding: 16px;
   }
 
-  /* hide all views by default; current view becomes block */
   .view { display: none; flex-direction: column; gap: 12px; animation: fadein 0.18s ease-out; }
   .view.show { display: flex; }
   @keyframes fadein { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 
-  /* =====================================================================
-   *  bottom nav
-   * ===================================================================== */
   .nav {
     position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
+    bottom: 0; left: 0; right: 0;
     height: calc(var(--nav-h) + var(--safe-bot));
     padding: 0 8px var(--safe-bot);
     display: flex;
@@ -165,13 +136,10 @@
   }
   .nav button {
     flex: 1;
-    background: none;
-    border: 0;
+    background: none; border: 0;
     color: var(--muted);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
     gap: 2px;
     cursor: pointer;
     font-family: inherit;
@@ -184,24 +152,15 @@
   .nav button svg { width: 22px; height: 22px; }
   .nav button.active { color: var(--accent); }
   .nav button .badge {
-    position: absolute;
-    top: 6px;
-    right: calc(50% - 18px);
-    min-width: 16px;
-    height: 16px;
+    position: absolute; top: 6px; right: calc(50% - 18px);
+    min-width: 16px; height: 16px;
     padding: 0 4px;
-    background: var(--accent);
-    color: white;
+    background: var(--accent); color: white;
     border-radius: 999px;
-    font-size: 10px;
-    font-weight: 700;
-    line-height: 16px;
-    text-align: center;
+    font-size: 10px; font-weight: 700;
+    line-height: 16px; text-align: center;
   }
 
-  /* =====================================================================
-   *  primitives
-   * ===================================================================== */
   .card {
     background: var(--surface);
     border: 1px solid var(--rule);
@@ -209,37 +168,24 @@
     padding: 14px;
     box-shadow: var(--shadow-sm);
   }
-  .card-title {
-    margin: 0 0 4px;
-    font-size: 14px;
-    font-weight: 700;
-    color: var(--ink);
-    letter-spacing: -0.005em;
-  }
+  .card-title { margin: 0 0 4px; font-size: 14px; font-weight: 700; color: var(--ink); letter-spacing: -0.005em; }
   .card-help { color: var(--muted); font-size: 12px; margin: 0; }
 
   label.field {
     display: block;
-    font-size: 11.5px;
-    font-weight: 600;
+    font-size: 11.5px; font-weight: 600;
     color: var(--muted);
     margin-bottom: 6px;
     letter-spacing: 0.02em;
   }
-
-  input[type="text"],
-  input[type="number"],
-  input[type="email"],
-  textarea,
-  select {
+  input[type="text"], input[type="number"], input[type="email"], textarea, select {
     width: 100%;
     background: var(--surface-2);
     color: var(--ink);
     border: 1px solid var(--rule);
     border-radius: var(--radius-sm);
     padding: 12px 14px;
-    font: inherit;
-    font-size: 15px;
+    font: inherit; font-size: 15px;
     min-height: 44px;
     transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
   }
@@ -252,18 +198,14 @@
   textarea { min-height: 80px; resize: vertical; }
 
   .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
+    display: inline-flex; align-items: center; justify-content: center;
     gap: 6px;
     background: var(--accent);
     color: white;
     border: 0;
     border-radius: 12px;
     padding: 12px 18px;
-    font: inherit;
-    font-weight: 700;
-    font-size: 15px;
+    font: inherit; font-weight: 700; font-size: 15px;
     cursor: pointer;
     min-height: 46px;
     box-shadow: 0 6px 16px rgba(232, 93, 4, 0.25);
@@ -280,7 +222,6 @@
     box-shadow: none;
     font-weight: 500;
   }
-  .btn.ghost:hover { border-color: var(--ink-soft); }
   .btn.danger {
     background: rgba(220, 38, 38, 0.08);
     color: var(--danger);
@@ -290,71 +231,82 @@
   .btn.good { background: var(--good); box-shadow: 0 6px 16px rgba(5, 150, 105, 0.25); }
   .btn.sm { padding: 8px 12px; min-height: 36px; font-size: 13px; }
 
-  /* segmented control */
-  .seg {
-    display: flex;
-    background: var(--surface-2);
-    border: 1px solid var(--rule);
-    border-radius: 12px;
-    padding: 3px;
-    gap: 2px;
-  }
+  .seg { display: flex; background: var(--surface-2); border: 1px solid var(--rule); border-radius: 12px; padding: 3px; gap: 2px; }
   .seg button {
     flex: 1;
-    border: 0;
-    background: transparent;
+    border: 0; background: transparent;
     color: var(--muted);
     padding: 9px 8px;
     border-radius: 9px;
     cursor: pointer;
-    font: inherit;
-    font-size: 13px;
-    font-weight: 600;
+    font: inherit; font-size: 13px; font-weight: 600;
     transition: all 0.15s;
   }
-  .seg button.active {
-    background: var(--surface);
-    color: var(--ink);
-    box-shadow: var(--shadow-sm);
-  }
+  .seg button.active { background: var(--surface); color: var(--ink); box-shadow: var(--shadow-sm); }
 
-  /* chip grid (kind picker) */
-  .kind-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 8px;
-  }
-  .kind-chip {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    padding: 14px 6px;
+  /* category tile picker — the big 3 */
+  .cat-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
+  .cat-tile {
+    text-align: left;
     background: var(--surface);
     border: 1.5px solid var(--rule);
-    border-radius: 14px;
+    border-radius: 16px;
+    padding: 16px 14px;
+    display: grid;
+    grid-template-columns: 48px 1fr auto;
+    align-items: center;
+    gap: 14px;
     cursor: pointer;
-    transition: all 0.12s;
-    min-height: 86px;
-    color: var(--ink-soft);
+    transition: all 0.15s;
+    box-shadow: var(--shadow-sm);
   }
-  .kind-chip:active { transform: scale(0.97); }
-  .kind-chip svg { width: 26px; height: 26px; color: var(--muted); }
-  .kind-chip .lbl { font-size: 12px; font-weight: 600; }
-  .kind-chip.active {
-    border-color: var(--accent);
-    background: rgba(232, 93, 4, 0.05);
-    color: var(--accent);
+  .cat-tile:active { transform: scale(0.98); }
+  .cat-tile.active { border-color: var(--cat); background: color-mix(in srgb, var(--cat) 6%, var(--surface)); }
+  .cat-tile .cat-ic {
+    width: 48px; height: 48px;
+    background: color-mix(in srgb, var(--cat) 12%, white);
+    color: var(--cat);
+    border-radius: 12px;
+    display: grid; place-items: center;
   }
-  .kind-chip.active svg { color: var(--accent); }
+  .cat-tile .cat-ic svg { width: 26px; height: 26px; }
+  .cat-tile h3 { margin: 0 0 2px; font-size: 16px; color: var(--ink); font-weight: 700; }
+  .cat-tile p { margin: 0; color: var(--muted); font-size: 12.5px; }
+  .cat-tile.spot_keep { --cat: var(--cat-spot); }
+  .cat-tile.photo     { --cat: var(--cat-photo); }
+  .cat-tile.scout     { --cat: var(--cat-scout); }
+  .cat-tile .chev { color: var(--muted-2); }
+  .cat-tile .chev svg { width: 16px; height: 16px; }
+
+  /* subkind list */
+  .sub-list { display: flex; flex-direction: column; gap: 8px; }
+  .sub-item {
+    background: var(--surface);
+    border: 1.5px solid var(--rule);
+    border-radius: 12px;
+    padding: 12px;
+    display: flex; align-items: center; gap: 12px;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.15s;
+  }
+  .sub-item:active { transform: scale(0.98); }
+  .sub-item.active { border-color: var(--cat, var(--accent)); background: color-mix(in srgb, var(--cat, var(--accent)) 6%, var(--surface)); }
+  .sub-item h4 { margin: 0 0 2px; font-size: 14px; color: var(--ink); font-weight: 700; }
+  .sub-item p { margin: 0; color: var(--muted); font-size: 12px; }
+  .sub-item .ic {
+    width: 36px; height: 36px;
+    background: var(--surface-2);
+    color: var(--cat, var(--ink-soft));
+    border-radius: 10px;
+    display: grid; place-items: center;
+    flex-shrink: 0;
+  }
+  .sub-item.active .ic { background: color-mix(in srgb, var(--cat) 14%, white); }
+  .sub-item .ic svg { width: 18px; height: 18px; }
 
   /* bounty pills */
-  .pills {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
+  .pills { display: flex; gap: 6px; flex-wrap: wrap; }
   .pill {
     background: var(--surface);
     border: 1.5px solid var(--rule);
@@ -368,11 +320,7 @@
     font-variant-numeric: tabular-nums;
   }
   .pill:active { transform: scale(0.97); }
-  .pill.active {
-    border-color: var(--accent);
-    background: var(--accent);
-    color: white;
-  }
+  .pill.active { border-color: var(--accent); background: var(--accent); color: white; }
 
   /* request card */
   .req-card {
@@ -380,18 +328,28 @@
     border: 1px solid var(--rule);
     border-radius: var(--radius);
     padding: 14px;
-    display: grid;
-    grid-template-columns: 40px 1fr auto;
-    gap: 10px;
     box-shadow: var(--shadow-sm);
     position: relative;
     overflow: hidden;
   }
+  .req-card::before {
+    content: "";
+    position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+    background: var(--cat);
+  }
+  .req-card.spot_keep { --cat: var(--cat-spot); }
+  .req-card.photo     { --cat: var(--cat-photo); }
+  .req-card.scout     { --cat: var(--cat-scout); }
+  .req-row {
+    display: grid;
+    grid-template-columns: 40px 1fr auto;
+    gap: 10px;
+  }
   .req-card .kind-ic {
     width: 40px; height: 40px;
     border-radius: 10px;
-    background: rgba(232, 93, 4, 0.08);
-    color: var(--accent);
+    background: color-mix(in srgb, var(--cat) 12%, white);
+    color: var(--cat);
     display: grid; place-items: center;
   }
   .req-card .kind-ic svg { width: 20px; height: 20px; }
@@ -404,6 +362,7 @@
     margin-top: 6px;
     color: var(--muted);
     font-size: 11.5px;
+    flex-wrap: wrap;
   }
   .req-card .meta b { color: var(--ink); font-weight: 600; font-family: "Inter", monospace; }
   .req-card .price {
@@ -418,12 +377,24 @@
   }
   .req-card .price::before { content: "¥"; opacity: 0.7; margin-right: 1px; }
   .req-card .actions {
-    grid-column: 1 / -1;
     display: flex;
     gap: 6px;
-    margin-top: 10px;
+    margin-top: 12px;
   }
   .req-card .actions .btn { flex: 1; }
+  .req-card .chip {
+    display: inline-flex; align-items: center; gap: 3px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 10.5px;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--cat) 10%, white);
+    color: var(--cat);
+  }
+  .req-card .chip.remote {
+    background: rgba(4, 120, 87, 0.10);
+    color: var(--cat-scout);
+  }
   .req-card .badge-status {
     display: inline-block;
     padding: 2px 8px;
@@ -438,8 +409,24 @@
   .badge-status.done    { background: rgba(5, 150, 105, 0.10); color: var(--good); }
   .badge-status.cancel  { background: rgba(107, 114, 128, 0.10); color: var(--muted); }
   .badge-status.dispute { background: rgba(220, 38, 38, 0.10); color: var(--danger); }
+  .req-card .helper-reply {
+    margin-top: 10px;
+    padding: 10px 12px;
+    background: var(--surface-2);
+    border-left: 3px solid var(--cat-scout);
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--ink);
+  }
+  .req-card .helper-reply::before {
+    content: "返信";
+    display: block;
+    font-size: 10.5px;
+    color: var(--muted);
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
 
-  /* empty state */
   .empty {
     text-align: center;
     color: var(--muted);
@@ -448,19 +435,12 @@
     border-radius: var(--radius);
     background: var(--surface-2);
   }
-  .empty svg {
-    width: 36px; height: 36px;
-    color: var(--muted-2);
-    margin-bottom: 8px;
-  }
+  .empty svg { width: 36px; height: 36px; color: var(--muted-2); margin-bottom: 8px; }
   .empty h3 { color: var(--ink-soft); margin: 0 0 4px; font-size: 14.5px; font-weight: 700; }
   .empty p { margin: 0; font-size: 12.5px; }
 
-  /* loc strip */
   .loc-strip {
-    display: flex;
-    align-items: center;
-    gap: 8px;
+    display: flex; align-items: center; gap: 8px;
     background: var(--surface);
     border: 1px solid var(--rule);
     border-radius: 999px;
@@ -490,20 +470,12 @@
     background: none; border: 0;
     color: var(--accent);
     font-size: 12.5px; font-weight: 600;
-    cursor: pointer;
-    font-family: inherit;
+    cursor: pointer; font-family: inherit;
   }
 
-  /* sign in */
-  .signin-host {
-    min-height: 70dvh;
-    display: grid;
-    place-items: center;
-    padding: 20px;
-  }
+  .signin-host { min-height: 70dvh; display: grid; place-items: center; padding: 20px; }
   .signin {
-    width: 100%;
-    max-width: 360px;
+    width: 100%; max-width: 360px;
     background: var(--surface);
     border: 1px solid var(--rule);
     border-radius: 22px;
@@ -524,19 +496,25 @@
   .signin h2 { margin: 0 0 4px; font-size: 22px; letter-spacing: -0.01em; }
   .signin .lead { color: var(--muted); font-size: 13.5px; margin: 0 0 20px; }
   .signin .input-row { text-align: left; margin-bottom: 12px; }
+  .signin .tagline {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    margin: -4px 0 16px;
+    background: var(--surface-2);
+    border-left: 3px solid var(--accent);
+    padding: 8px 10px;
+    text-align: left;
+    border-radius: 4px;
+  }
 
-  /* toasts */
   .toasts {
     position: fixed;
     left: 50%;
     bottom: calc(var(--nav-h) + var(--safe-bot) + 16px);
     transform: translateX(-50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8px;
-    z-index: 100;
-    pointer-events: none;
+    display: flex; flex-direction: column;
+    align-items: center; gap: 8px;
+    z-index: 100; pointer-events: none;
     max-width: 92vw;
   }
   .toast {
@@ -551,13 +529,12 @@
     display: flex; align-items: center; gap: 8px;
     max-width: 100%;
   }
-  .toast.ok    { background: var(--good); }
-  .toast.err   { background: var(--danger); }
+  .toast.ok { background: var(--good); }
+  .toast.err { background: var(--danger); }
   .toast svg { width: 14px; height: 14px; }
   @keyframes toast-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
   @keyframes toast-out { to { opacity: 0; transform: translateY(8px); } }
 
-  /* stat rows */
   .stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
   .stat {
     background: var(--surface-2);
@@ -568,40 +545,45 @@
   .stat .label { font-size: 11px; color: var(--muted); }
   .stat .v {
     font-family: "Inter", monospace;
-    font-weight: 700;
-    font-size: 19px;
-    color: var(--ink);
-    font-variant-numeric: tabular-nums;
+    font-weight: 700; font-size: 19px;
+    color: var(--ink); font-variant-numeric: tabular-nums;
   }
   .stat .v small { color: var(--muted); font-weight: 500; font-size: 12px; }
 
-  /* loading skeleton */
-  .skeleton { background: linear-gradient(90deg, var(--rule) 0%, var(--surface-2) 50%, var(--rule) 100%);
-    background-size: 200% 100%; animation: shimmer 1.4s infinite linear; border-radius: 6px; }
+  .skeleton {
+    background: linear-gradient(90deg, var(--rule) 0%, var(--surface-2) 50%, var(--rule) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite linear;
+    border-radius: 6px;
+  }
   @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 
-  /* radius slider */
-  .slider-row {
-    display: flex; align-items: center; gap: 10px;
-    margin-top: 6px;
+  /* modal for inline confirm with helper_reply */
+  .modal-bg {
+    position: fixed; inset: 0;
+    background: rgba(31, 41, 55, 0.5);
+    backdrop-filter: blur(6px);
+    z-index: 60;
+    display: flex; align-items: flex-end;
+    animation: bgin 0.18s ease-out;
   }
-  .slider-row input[type="range"] { flex: 1; accent-color: var(--accent); }
-  .slider-row .v {
-    font-family: "Inter", monospace;
-    font-variant-numeric: tabular-nums;
-    color: var(--ink);
-    font-weight: 600;
-    font-size: 13px;
-    min-width: 50px;
-    text-align: right;
+  @keyframes bgin { from { opacity: 0; } to { opacity: 1; } }
+  .modal {
+    margin: 0 auto;
+    background: var(--surface);
+    border-radius: 22px 22px 0 0;
+    padding: 22px 20px calc(20px + var(--safe-bot));
+    box-shadow: var(--shadow-lg);
+    width: 100%; max-width: 540px;
+    animation: slideup 0.25s ease-out;
   }
+  @keyframes slideup { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  .modal h3 { margin: 0 0 8px; font-size: 17px; }
+  .modal .help { color: var(--muted); font-size: 12.5px; margin: 0 0 14px; }
 </style>
 </head>
 <body>
 
-<!-- =====================================================================
-SVG sprite — single source of truth for every icon used in the UI.
-====================================================================== -->
 <svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
   <defs>
     <symbol id="i-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -649,13 +631,8 @@ SVG sprite — single source of truth for every icon used in the UI.
       <rect x="3" y="5" width="18" height="14" rx="2"/>
       <path d="M3 7l9 6 9-6"/>
     </symbol>
-    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <path d="M12 7v5l3 2"/>
-    </symbol>
-    <symbol id="i-coin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <path d="M9 9l3 4 3-4M9 13h6M11 13v3"/>
+    <symbol id="i-chevron-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 6l6 6-6 6"/>
     </symbol>
     <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M12 3l8 3v7c0 5-4 8-8 8s-8-3-8-8V6z"/>
@@ -664,78 +641,90 @@ SVG sprite — single source of truth for every icon used in the UI.
     <symbol id="i-spinner" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M21 12a9 9 0 1 1-3-6.7"/>
     </symbol>
+    <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M19 12H5M11 18l-6-6 6-6"/>
+    </symbol>
 
-    <!-- favor kinds -->
-    <symbol id="k-seat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M5 16h14M5 16v4M19 16v4"/>
-      <path d="M7 16V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v9"/>
-      <path d="M9 12h6"/>
+    <!-- category-level glyphs -->
+    <symbol id="cat-spot_keep" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="11" width="18" height="9" rx="1.5"/>
+      <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      <circle cx="12" cy="15.5" r="1.4"/>
     </symbol>
-    <symbol id="k-luggage" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="5" y="7" width="14" height="13" rx="2"/>
-      <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-      <path d="M9 11v6M15 11v6"/>
+    <symbol id="cat-photo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="6" width="18" height="14" rx="2"/>
+      <path d="M8 6l1.5-2h5L16 6"/>
+      <circle cx="12" cy="13" r="3.5"/>
     </symbol>
-    <symbol id="k-toilet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+    <symbol id="cat-scout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="6.5"/>
+      <path d="M16 16l4.5 4.5"/>
+    </symbol>
+
+    <!-- subkind glyphs -->
+    <symbol id="sub-toilet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
       <rect x="4" y="3" width="16" height="18" rx="1.5"/>
       <circle cx="9" cy="9" r="1.4"/>
       <path d="M7.5 16c0-2 1-3.5 1.5-3.5s1.5 1.5 1.5 3.5"/>
       <circle cx="15" cy="9" r="1.4"/>
       <path d="M13.5 16h3M15 12.5V16"/>
     </symbol>
-    <symbol id="k-child" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="6" r="2.5"/>
-      <path d="M9 11h6l-1 9h-4z"/>
-      <path d="M10 14l-2 3M14 14l2 3"/>
+    <symbol id="sub-queue_general" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="5" cy="12" r="2"/>
+      <circle cx="12" cy="12" r="2"/>
+      <circle cx="19" cy="12" r="2"/>
     </symbol>
-    <symbol id="k-umbrella" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M3 12a9 9 0 0 1 18 0z"/>
-      <path d="M12 3v9"/>
-      <path d="M12 20a2 2 0 1 1-4 0"/>
+    <symbol id="sub-seat_general" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 16h14M5 16v4M19 16v4"/>
+      <path d="M7 16V7a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v9"/>
     </symbol>
-    <symbol id="k-directions" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="9"/>
-      <path d="M16 8l-5 2-2 5 5-2z"/>
+    <symbol id="sub-callback" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 9a6 6 0 1 1 12 0c0 4 1.5 5 2 6H4c.5-1 2-2 2-6z"/>
+      <path d="M10 19a2 2 0 0 0 4 0"/>
     </symbol>
-    <symbol id="k-photo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="6" width="18" height="14" rx="2"/>
-      <path d="M8 6l1.5-2h5L16 6"/>
-      <circle cx="12" cy="13" r="3.5"/>
+    <symbol id="sub-group" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="9" cy="9" r="3"/>
+      <path d="M3 19c0-3 3-5 6-5s6 2 6 5"/>
+      <circle cx="17" cy="10" r="2"/>
+      <path d="M15 19c0-2.5 2-4 4-4"/>
     </symbol>
-    <symbol id="k-pet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="6" cy="10" r="1.8"/>
-      <circle cx="10" cy="6" r="1.8"/>
-      <circle cx="14" cy="6" r="1.8"/>
-      <circle cx="18" cy="10" r="1.8"/>
-      <path d="M8 18a4 4 0 0 1 8 0c0 2-2 2-4 2s-4 0-4-2z"/>
+    <symbol id="sub-with_view" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="6" width="18" height="12" rx="2"/>
+      <path d="M3 14l5-4 4 3 3-2 6 4"/>
+      <circle cx="8" cy="9.5" r="1"/>
     </symbol>
-    <symbol id="k-reach" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M11 21V10M11 10l-3-3M11 10l-3 3M11 10h4l-1-7"/>
-      <rect x="14" y="2" width="7" height="3"/>
+    <symbol id="sub-venue_status" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 20V8M9 20V12M14 20V6M19 20V14"/>
     </symbol>
-    <symbol id="k-translate" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M4 6h7M7 4v2M4 11c0-3 7-3 7 0 0 2-3 3-5 5h5"/>
-      <path d="M13 14l3-7 3 7M14.4 11.5h3.2"/>
+    <symbol id="sub-weather" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M7 15a4 4 0 0 1 0-8 5 5 0 0 1 9.5 1.5A3.5 3.5 0 1 1 17 15z"/>
+      <path d="M8 19l1-2M13 19l1-2M16 21l1-2"/>
     </symbol>
-    <symbol id="k-charger" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="3" y="7" width="16" height="10" rx="2"/>
-      <path d="M19 11h2v2h-2"/>
-      <path d="M9 9l-2 3h3l-2 3"/>
+    <symbol id="sub-transit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="3" width="14" height="14" rx="2"/>
+      <path d="M5 11h14"/>
+      <circle cx="9" cy="14.5" r="0.8" fill="currentColor"/>
+      <circle cx="15" cy="14.5" r="0.8" fill="currentColor"/>
+      <path d="M8 17l-2 4M16 17l2 4"/>
     </symbol>
-    <symbol id="k-other" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.5 5.5l2.8 2.8M15.7 15.7l2.8 2.8M5.5 18.5l2.8-2.8M15.7 8.3l2.8-2.8"/>
+    <symbol id="sub-nature" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="9" r="2"/>
+      <path d="M12 7c0-2 1-4 3-4 0 2-1 3-3 4z"/>
+      <path d="M12 7c0-2-1-4-3-4 0 2 1 3 3 4z"/>
+      <path d="M10 9c-2 0-4-1-4-3 2 0 3 1 4 3z"/>
+      <path d="M14 9c2 0 4-1 4-3-2 0-3 1-4 3z"/>
+      <path d="M12 11v10"/>
     </symbol>
   </defs>
 </svg>
 
-<!-- =====================================================================
-sign-in screen (shown when no auth session)
-====================================================================== -->
+<!-- ============================== sign-in -->
 <div class="signin-host" id="signin-screen" hidden>
   <div class="signin">
     <div class="logo"><svg><use href="#i-brand"/></svg></div>
     <h2>たすけて</h2>
-    <p class="lead">ご近所の些細な困りごとを、些細なお金で、その場で解決する。続けるにはメールで認証。</p>
+    <p class="lead">通りすがりの人に、お金を介して、ちゃんと頼める。</p>
+    <p class="tagline">場所キープ・写真撮影・現地偵察 — 困った時の本当に小さなお願いだけ。</p>
     <div class="input-row">
       <label class="field">メールアドレス</label>
       <input type="email" id="signin-email" placeholder="you@example.com" autocomplete="email" />
@@ -744,24 +733,21 @@ sign-in screen (shown when no auth session)
       <svg><use href="#i-mail"/></svg> マジックリンクを送る
     </button>
     <p style="margin-top:14px; color: var(--muted); font-size: 11.5px">
-      送られてくるメールのリンクをタップすると戻ってきます。<br/>
-      ボタンを押した時点でこのアプリの利用規約に同意したものとみなします。
+      メールのリンクをタップすると戻ってきます。<br/>
+      ボタンを押した時点で本アプリの利用規約に同意したものとみなします。
     </p>
   </div>
 </div>
 
-<!-- =====================================================================
-main app shell
-====================================================================== -->
+<!-- ============================== app shell -->
 <div id="app" hidden>
 
-  <!-- topbar -->
   <header class="topbar">
     <div class="brand">
       <span class="brand-mark"><svg><use href="#i-brand"/></svg></span>
       <div>
         <div class="brand-name">たすけて</div>
-        <div class="brand-tag">ご近所の些細なお願い</div>
+        <div class="brand-tag">通りすがりに、ちゃんと頼める</div>
       </div>
     </div>
     <div class="top-actions">
@@ -776,7 +762,7 @@ main app shell
 
   <main>
 
-    <!-- ============= view: home (feed) ============= -->
+    <!-- ============= home (feed) ============= -->
     <section class="view show" data-view="home">
       <div class="loc-strip" id="loc-strip">
         <span class="pin"><svg><use href="#i-pin"/></svg></span>
@@ -784,88 +770,122 @@ main app shell
         <span class="coords" id="loc-coords"></span>
       </div>
 
+      <div class="seg" id="scope-tabs" style="margin-top:2px">
+        <button class="active" data-scope="all">すべて</button>
+        <button data-scope="spot_keep">場所キープ</button>
+        <button data-scope="photo">写真</button>
+        <button data-scope="scout">偵察</button>
+      </div>
+
       <div class="card" style="display:flex;align-items:center;gap:10px;padding:10px 12px">
-        <label style="flex:1;font-size:12px;color:var(--muted);margin:0">範囲</label>
+        <label style="flex:1;font-size:12px;color:var(--muted);margin:0">近隣の範囲</label>
         <input type="range" id="radius-slider" min="200" max="5000" step="100" value="2000"
                style="flex:2.5;accent-color:var(--accent)" oninput="onRadiusChange()" />
-        <span class="v" id="radius-v" style="font-family:'Inter',monospace;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;font-size:13px;min-width:54px;text-align:right">2.0km</span>
+        <span id="radius-v" style="font-family:'Inter',monospace;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums;font-size:13px;min-width:54px;text-align:right">2.0km</span>
       </div>
 
       <div id="feed-list" style="display:flex;flex-direction:column;gap:10px">
-        <!-- skeletons before first load -->
-        <div class="req-card">
-          <div class="skeleton" style="height:40px;width:40px;border-radius:10px"></div>
-          <div>
-            <div class="skeleton" style="height:12px;width:60%;margin-bottom:8px"></div>
-            <div class="skeleton" style="height:14px;width:90%"></div>
-          </div>
-        </div>
-        <div class="req-card">
-          <div class="skeleton" style="height:40px;width:40px;border-radius:10px"></div>
-          <div>
-            <div class="skeleton" style="height:12px;width:50%;margin-bottom:8px"></div>
-            <div class="skeleton" style="height:14px;width:80%"></div>
+        <div class="req-card spot_keep">
+          <div class="req-row">
+            <div class="skeleton" style="height:40px;width:40px;border-radius:10px"></div>
+            <div>
+              <div class="skeleton" style="height:12px;width:60%;margin-bottom:8px"></div>
+              <div class="skeleton" style="height:14px;width:90%"></div>
+            </div>
+            <div class="skeleton" style="height:18px;width:50px"></div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ============= view: post ============= -->
-    <section class="view" data-view="post">
+    <!-- ============= post — step 1: category ============= -->
+    <section class="view" data-view="post-cat">
       <div class="card">
-        <h3 class="card-title">どんな困りごとですか?</h3>
-        <p class="card-help">該当する種類を選んでください。「その他」は説明が必要です。</p>
-        <div class="kind-grid" id="kind-grid" style="margin-top:10px"></div>
+        <h3 class="card-title">どんなお願い?</h3>
+        <p class="card-help">大きく3つ。タップで次へ。</p>
+      </div>
+      <div class="cat-grid">
+        <button class="cat-tile spot_keep" onclick="pickCategory('spot_keep')">
+          <span class="cat-ic"><svg><use href="#cat-spot_keep"/></svg></span>
+          <div>
+            <h3>場所をキープしてほしい</h3>
+            <p>トイレ抜ける間、列の場所をとっておいて。</p>
+          </div>
+          <span class="chev"><svg><use href="#i-chevron-right"/></svg></span>
+        </button>
+        <button class="cat-tile photo" onclick="pickCategory('photo')">
+          <span class="cat-ic"><svg><use href="#cat-photo"/></svg></span>
+          <div>
+            <h3>写真を撮ってほしい</h3>
+            <p>家族・グループ・風景込みの自分。</p>
+          </div>
+          <span class="chev"><svg><use href="#i-chevron-right"/></svg></span>
+        </button>
+        <button class="cat-tile scout" onclick="pickCategory('scout')">
+          <span class="cat-ic"><svg><use href="#cat-scout"/></svg></span>
+          <div>
+            <h3>現地の様子を教えて</h3>
+            <p>混雑・天気・運行・開花を写真+ひとことで。</p>
+          </div>
+          <span class="chev"><svg><use href="#i-chevron-right"/></svg></span>
+        </button>
+      </div>
+    </section>
+
+    <!-- ============= post — step 2: subkind + details ============= -->
+    <section class="view" data-view="post-details">
+      <button class="btn ghost sm" style="align-self:flex-start" onclick="goView('post-cat')">
+        <svg><use href="#i-back"/></svg> カテゴリへ戻る
+      </button>
+
+      <div class="card">
+        <h3 class="card-title">細かい種類</h3>
+        <div class="sub-list" id="sub-list" style="margin-top:10px"></div>
       </div>
 
       <div class="card">
-        <h3 class="card-title">いくら払いますか?</h3>
-        <p class="card-help">気持ち程度の少額で OK。最大1000円まで。</p>
+        <h3 class="card-title">いくら払う?</h3>
         <div class="pills" id="bounty-pills" style="margin-top:10px">
           <button class="pill" data-yen="0">0円</button>
           <button class="pill active" data-yen="100">100円</button>
           <button class="pill" data-yen="200">200円</button>
           <button class="pill" data-yen="300">300円</button>
           <button class="pill" data-yen="500">500円</button>
-          <button class="pill" data-yen="1000">1000円</button>
         </div>
       </div>
 
-      <div class="card" id="desc-card">
-        <h3 class="card-title">補足説明 <span id="desc-required" style="color:var(--danger);display:none">(必須)</span></h3>
-        <p class="card-help">どう困っているか、相手がわかるように一言。</p>
-        <textarea id="post-desc" placeholder="例: 新幹線で作業したいので席を譲ってほしい" maxlength="280" style="margin-top:8px"></textarea>
+      <div class="card">
+        <h3 class="card-title">補足説明 <span id="desc-required-hint" style="color:var(--muted);font-size:12px;font-weight:400">(任意)</span></h3>
+        <textarea id="post-desc" placeholder="例: 改札外のスタバ前です、レシート色違い見てきて" maxlength="280" style="margin-top:8px"></textarea>
       </div>
 
       <div class="card">
         <h3 class="card-title">いつまでに?</h3>
-        <p class="card-help">この時間を過ぎると自動的に取り下げられます。</p>
-        <div class="pills" style="margin-top:10px" id="duration-pills">
-          <button class="pill" data-min="15">15分</button>
-          <button class="pill active" data-min="30">30分</button>
+        <div class="pills" id="duration-pills" style="margin-top:10px">
+          <button class="pill active" data-min="15">15分</button>
+          <button class="pill" data-min="30">30分</button>
           <button class="pill" data-min="60">1時間</button>
           <button class="pill" data-min="120">2時間</button>
-          <button class="pill" data-min="240">4時間</button>
         </div>
       </div>
 
-      <div class="card">
+      <div class="card" id="post-location-card">
         <h3 class="card-title">場所</h3>
         <div class="loc-strip" style="margin-top:8px">
           <span class="pin"><svg><use href="#i-pin"/></svg></span>
-          <span class="label" id="post-loc-label">現在地から投稿</span>
+          <span class="label" id="post-loc-label">現在地</span>
           <span class="coords" id="post-loc-coords"></span>
           <button onclick="refreshLocation(true)">再取得</button>
         </div>
-        <p class="card-help" style="margin-top:8px">通知は同じエリア (半径2km目安) の登録ユーザーに届きます。</p>
+        <p class="card-help" id="post-location-help" style="margin-top:8px">通知は同じエリアの登録ユーザーに届きます。</p>
       </div>
 
       <button class="btn block good" id="post-btn" onclick="submitRequest()">
-        <svg><use href="#i-check"/></svg> 困りごとを投稿する
+        <svg><use href="#i-check"/></svg> 投稿する
       </button>
     </section>
 
-    <!-- ============= view: inbox (yarinashi) ============= -->
+    <!-- ============= inbox ============= -->
     <section class="view" data-view="inbox">
       <div class="seg" id="inbox-tabs">
         <button class="active" data-tab="mine">投稿した</button>
@@ -874,7 +894,7 @@ main app shell
       <div id="inbox-list" style="display:flex;flex-direction:column;gap:10px"></div>
     </section>
 
-    <!-- ============= view: profile ============= -->
+    <!-- ============= profile ============= -->
     <section class="view" data-view="profile">
       <div class="card">
         <h3 class="card-title">プロフィール</h3>
@@ -903,10 +923,12 @@ main app shell
       <div class="card">
         <h3 class="card-title"><svg style="width:14px;height:14px;vertical-align:-2px" stroke="currentColor" fill="none" stroke-width="1.8"><use href="#i-shield"/></svg> 安全について</h3>
         <p class="card-help">
-          ・1度に開ける依頼は最大3件まで。<br/>
+          ・1度に開けるお願いは最大3件まで。<br/>
+          ・1時間あたりの投稿は3件まで。<br/>
           ・受け取り側・依頼者の両方が完了確認した時のみ取引成立。<br/>
           ・気になる相手はブロック、不快な相手は通報できます。<br/>
-          ・場所情報は依頼を出した時にのみ記録されます。
+          ・場所情報はお願い投稿時にのみ記録されます。<br/>
+          ・現在のMVPは <b>場所キープ / 写真 / 現地偵察</b> のみ。子供預かりや長時間同行は扱いません。
         </p>
       </div>
 
@@ -917,13 +939,12 @@ main app shell
 
   </main>
 
-  <!-- bottom nav -->
   <nav class="nav" id="nav">
     <button class="active" data-view="home" onclick="goView('home')">
       <svg><use href="#i-home"/></svg>
       <span>近くで困った</span>
     </button>
-    <button data-view="post" onclick="goView('post')">
+    <button data-view="post-cat" onclick="goView('post-cat')">
       <svg><use href="#i-plus"/></svg>
       <span>お願い</span>
     </button>
@@ -945,65 +966,41 @@ main app shell
 <script>
 "use strict";
 
-/* =====================================================================
- * Supabase
- * ===================================================================== */
 const cfg = window.TASUKETE_CONFIG;
 const supa = supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey, {
   auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
   db:   { schema: cfg.schema },
 });
 
-/* =====================================================================
- * state
- * ===================================================================== */
 const state = {
   session: null,
   profile: null,
-  location: null,       // { lat, lng, label?, acc? }
+  location: null,
   radiusM: cfg.defaultRadiusM,
+  scopeFilter: 'all',
+  kindMeta: [],          // all subkinds
   feed: [],
   inboxMine: [],
   inboxHelping: [],
-  postKind: 'seat',
-  postBounty: 100,
-  postDuration: 30,
   inboxTab: 'mine',
+  // post state
+  postCategory: null,
+  postSubkind: null,
+  postBounty: 100,
+  postDuration: 15,
 };
 
-const KIND_LABEL = {
-  seat: '席を譲って', luggage: '荷物を持って', toilet: 'トイレ順番',
-  child: '子供を見て', umbrella: '傘を貸して', directions: '道案内',
-  photo: '写真撮影', pet: 'ペット見守り', reach: '棚から取って',
-  translate: '通訳して', charger: '充電貸して', other: 'その他',
-};
-const KIND_ICON = {
-  seat: 'k-seat', luggage: 'k-luggage', toilet: 'k-toilet',
-  child: 'k-child', umbrella: 'k-umbrella', directions: 'k-directions',
-  photo: 'k-photo', pet: 'k-pet', reach: 'k-reach',
-  translate: 'k-translate', charger: 'k-charger', other: 'k-other',
-};
-const KIND_ORDER = [
-  'seat', 'luggage', 'toilet', 'child',
-  'umbrella', 'directions', 'translate',
-  'photo', 'charger', 'pet', 'reach', 'other',
-];
-
-/* =====================================================================
- * helpers
- * ===================================================================== */
-function $(sel) { return document.querySelector(sel); }
-function $$(sel) { return [...document.querySelectorAll(sel)]; }
+// helpers ---------------------------------------------------------
+function $(s) { return document.querySelector(s); }
+function $$(s) { return [...document.querySelectorAll(s)]; }
 function el(html) { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstChild; }
 function escapeHTML(s) { return String(s ?? '').replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]); }
 function svgRef(id, size = 16) { return `<svg width="${size}" height="${size}" aria-hidden="true"><use href="#${id}"/></svg>`; }
-
 function toast(msg, kind = '') {
   const t = el(`<div class="toast ${kind}">${kind ? svgRef(kind === 'err' ? 'i-x' : 'i-check', 14) : ''}<span>${escapeHTML(msg)}</span></div>`);
   $('#toasts').appendChild(t);
   setTimeout(() => t.remove(), 3000);
 }
-
 function formatDistance(m) {
   if (m == null) return '';
   if (m < 1000) return `${Math.round(m)}m`;
@@ -1016,16 +1013,13 @@ function formatTimeLeft(iso) {
   if (min < 60) return `あと${min}分`;
   return `あと${Math.floor(min / 60)}時間${min % 60}分`;
 }
+const CAT_LABEL = { spot_keep: '場所キープ', photo: '写真撮影', scout: '現地偵察' };
+const CAT_ICON_ID = { spot_keep: 'cat-spot_keep', photo: 'cat-photo', scout: 'cat-scout' };
 
-/* =====================================================================
- * auth
- * ===================================================================== */
+// ----------------------------------------------------------------- auth
 async function sendMagicLink() {
   const email = $('#signin-email').value.trim();
-  if (!email || !email.includes('@')) {
-    toast('メールアドレスを入れてください', 'err');
-    return;
-  }
+  if (!email || !email.includes('@')) return toast('メールアドレスを入れてください', 'err');
   const btn = $('#signin-btn');
   btn.disabled = true;
   btn.innerHTML = svgRef('i-spinner', 16) + ' 送信中…';
@@ -1035,62 +1029,45 @@ async function sendMagicLink() {
   });
   btn.disabled = false;
   btn.innerHTML = svgRef('i-mail', 16) + ' マジックリンクを送る';
-  if (error) {
-    toast('送信失敗: ' + error.message, 'err');
-    return;
-  }
-  toast('メールを送りました。リンクをタップ', 'ok');
+  if (error) return toast('送信失敗: ' + error.message, 'err');
+  toast('メールを送りました', 'ok');
 }
-
 async function signOut() {
   await supa.auth.signOut();
   state.session = null;
   state.profile = null;
   showSignIn();
 }
-
 async function onAuthStateChange(session) {
   state.session = session;
-  if (!session) {
-    showSignIn();
-    return;
-  }
-  // Ensure a profile row exists.
+  if (!session) return showSignIn();
   const { data, error } = await supa.rpc('ensure_profile', { p_display_name: null });
-  if (error) {
-    toast('プロフィール初期化失敗: ' + error.message, 'err');
-    return;
-  }
+  if (error) return toast('プロフィール初期化失敗: ' + error.message, 'err');
   state.profile = data;
   showApp();
+  await loadKindMeta();
   await refreshLocation();
   await refreshFeed();
   await refreshInbox();
 }
 
-/* =====================================================================
- * view routing
- * ===================================================================== */
-function showSignIn() {
-  $('#signin-screen').hidden = false;
-  $('#app').hidden = true;
-}
-function showApp() {
-  $('#signin-screen').hidden = true;
-  $('#app').hidden = false;
-}
+// ----------------------------------------------------------------- routing
+function showSignIn() { $('#signin-screen').hidden = false; $('#app').hidden = true; }
+function showApp()    { $('#signin-screen').hidden = true; $('#app').hidden = false; }
 function goView(name) {
   $$('.view').forEach(v => v.classList.toggle('show', v.dataset.view === name));
-  $$('#nav button').forEach(b => b.classList.toggle('active', b.dataset.view === name));
-  if (name === 'home')    refreshFeed();
-  if (name === 'inbox')   refreshInbox();
-  if (name === 'profile') renderProfile();
-  if (name === 'post')    renderPostKindGrid();
+  // nav: highlight the right tab. post-cat / post-details both highlight "post".
+  $$('#nav button').forEach(b => {
+    const target = name === 'post-details' ? 'post-cat' : name;
+    b.classList.toggle('active', b.dataset.view === target);
+  });
+  if (name === 'home')         refreshFeed();
+  if (name === 'inbox')        refreshInbox();
+  if (name === 'profile')      renderProfile();
+  if (name === 'post-cat')     resetPost();
 }
 
-/* =====================================================================
- * geolocation
- * ===================================================================== */
+// ----------------------------------------------------------------- geolocation
 async function refreshLocation(forPost = false) {
   $('#loc-label').textContent = '現在地を取得中…';
   if (!('geolocation' in navigator)) {
@@ -1100,15 +1077,11 @@ async function refreshLocation(forPost = false) {
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        state.location = {
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-          acc: Math.round(pos.coords.accuracy),
-        };
+        state.location = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         const c = `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}`;
         $('#loc-label').textContent = '現在地';
         $('#loc-coords').textContent = c;
-        $('#post-loc-label').textContent = '現在地から投稿';
+        $('#post-loc-label').textContent = '現在地';
         $('#post-loc-coords').textContent = c;
         if (!forPost) refreshFeed();
         resolve();
@@ -1122,54 +1095,62 @@ async function refreshLocation(forPost = false) {
     );
   });
 }
-
 function onRadiusChange() {
   state.radiusM = +$('#radius-slider').value;
-  $('#radius-v').textContent = state.radiusM >= 1000
-    ? `${(state.radiusM / 1000).toFixed(1)}km`
-    : `${state.radiusM}m`;
+  $('#radius-v').textContent = state.radiusM >= 1000 ? `${(state.radiusM / 1000).toFixed(1)}km` : `${state.radiusM}m`;
   refreshFeed();
 }
 
-/* =====================================================================
- * feed
- * ===================================================================== */
-async function refreshFeed(showToast = false) {
-  if (!state.location) return;
-  // Expire any stale rows from anyone first (idempotent server-side).
-  await supa.rpc('expire_stale');
-  const { data, error } = await supa.rpc('nearby_requests', {
-    lat: state.location.lat,
-    lng: state.location.lng,
-    radius_m: state.radiusM,
-    max_rows: 50,
-  });
-  if (error) {
-    toast('読み込み失敗: ' + error.message, 'err');
-    return;
-  }
-  state.feed = data || [];
-  renderFeed();
-  if (showToast) toast(`${state.feed.length}件の困りごと`, '');
+// ----------------------------------------------------------------- meta
+async function loadKindMeta() {
+  const { data, error } = await supa.from('kind_meta').select('*').order('display_order');
+  if (error) return toast('種類取得失敗: ' + error.message, 'err');
+  state.kindMeta = data || [];
 }
 
+// ----------------------------------------------------------------- feed
+async function refreshFeed(showToast = false) {
+  if (!state.location) return;
+  await supa.rpc('expire_stale');
+  const { data, error } = await supa.rpc('nearby_requests', {
+    p_lat: state.location.lat,
+    p_lng: state.location.lng,
+    p_radius_m: state.radiusM,
+    p_include_remote: true,
+    p_max_rows: 50,
+  });
+  if (error) return toast('読み込み失敗: ' + error.message, 'err');
+  state.feed = data || [];
+  renderFeed();
+  if (showToast) toast(`${state.feed.length}件のお願い`, '');
+}
+$('#scope-tabs').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-scope]');
+  if (!b) return;
+  state.scopeFilter = b.dataset.scope;
+  $$('#scope-tabs button').forEach(x => x.classList.toggle('active', x === b));
+  renderFeed();
+});
 function renderFeed() {
+  let rows = state.feed;
+  if (state.scopeFilter !== 'all') rows = rows.filter(r => r.category === state.scopeFilter);
   const list = $('#feed-list');
-  if (state.feed.length === 0) {
+  if (rows.length === 0) {
     list.innerHTML = `<div class="empty">
       <svg><use href="#i-home"/></svg>
-      <h3>今は誰も困っていない</h3>
-      <p>近所が平和ですね。範囲を広げてみる？</p>
+      <h3>今は近くで困ってる人はいない</h3>
+      <p>範囲を広げるか、お願いを投稿してみる?</p>
     </div>`;
     return;
   }
-  list.innerHTML = state.feed.map(r => requestCard(r, 'feed')).join('');
+  list.innerHTML = rows.map(r => requestCard(r, 'feed')).join('');
 }
 
 function requestCard(r, ctx) {
   const me = state.profile;
   const isMine = me && r.requester_id === me.id;
   const isHelper = me && r.accepter_id === me.id;
+  const isRemote = r.venue_type === 'remote';
   let actions = '';
   if (ctx === 'feed' && !isMine) {
     actions = `<button class="btn good" onclick="acceptRequest('${r.id}')">${svgRef('i-check', 16)} 引き受ける</button>`;
@@ -1191,122 +1172,157 @@ function requestCard(r, ctx) {
     }
   } else if (ctx === 'helping') {
     if (r.status === 'accepted') {
+      const needReply = r.needs_helper_reply || r.category === 'scout';
+      const verb = needReply ? '返信して完了' : '完了報告';
       actions = `
-        <button class="btn good" onclick="confirmHelper('${r.id}')">${svgRef('i-check', 16)} 完了報告</button>
+        <button class="btn good" onclick="openConfirmHelper('${r.id}', ${needReply})">${svgRef('i-check', 16)} ${verb}</button>
         <button class="btn ghost" onclick="cancelRequest('${r.id}')">辞退</button>`;
     } else if (r.status === 'confirmed_by_helper') {
       actions = `<span style="color:var(--muted);font-size:12.5px;padding:8px">依頼者の確認待ち…</span>`;
     } else if (r.status === 'completed') {
-      actions = `<span style="color:var(--good);font-size:12.5px;padding:8px;font-weight:600">完了 +1pt</span>`;
+      actions = `<span style="color:var(--good);font-size:12.5px;padding:8px;font-weight:600">完了 信用+1</span>`;
     } else if (r.status === 'disputed') {
       actions = `<span style="color:var(--danger);font-size:12.5px;padding:8px">確認中</span>`;
     }
   }
-  const statusKey = r.status === 'open' ? 'open'
-    : r.status === 'accepted' ? 'accepted'
-    : r.status === 'confirmed_by_helper' ? 'helper'
-    : r.status === 'completed' ? 'done'
-    : r.status === 'disputed' ? 'dispute' : 'cancel';
+  const statusKey = ({
+    open: 'open', accepted: 'accepted', confirmed_by_helper: 'helper',
+    completed: 'done', cancelled: 'cancel', expired: 'cancel', disputed: 'dispute',
+  })[r.status] || 'cancel';
   const statusLabel = ({
-    open: '募集中',
-    accepted: '引き受け中',
-    confirmed_by_helper: 'ヘルパー完了',
-    completed: '完了',
-    cancelled: '取り下げ',
-    expired: '期限切れ',
-    disputed: '確認中',
+    open: '募集中', accepted: '引き受け中', confirmed_by_helper: 'ヘルパー完了',
+    completed: '完了', cancelled: '取り下げ', expired: '期限切れ', disputed: '確認中',
   })[r.status] || r.status;
-  const distanceLine = r.distance_m != null
-    ? `<b>${formatDistance(r.distance_m)}</b> · ${formatTimeLeft(r.expires_at)}`
-    : `${formatTimeLeft(r.expires_at)}`;
+  const distanceLine = isRemote
+    ? `<span class="chip remote">${svgRef('cat-scout', 10)} リモート</span> ${formatTimeLeft(r.expires_at)}`
+    : `<b>${formatDistance(r.distance_m)}</b> · ${formatTimeLeft(r.expires_at)}`;
+  const subIcon = `sub-${r.subkind}`;
+  const replyBlock = r.helper_reply
+    ? `<div class="helper-reply">${escapeHTML(r.helper_reply)}</div>`
+    : '';
   return `
-    <div class="req-card">
-      <div class="kind-ic">${svgRef(KIND_ICON[r.kind] || 'k-other', 22)}</div>
-      <div>
-        <div class="who">
-          <b>${escapeHTML(r.requester_name || '?')}</b>
-          <span style="margin-left:6px;color:var(--muted-2)">信用 ${r.requester_trust ?? '–'}</span>
+    <div class="req-card ${r.category}">
+      <div class="req-row">
+        <div class="kind-ic">${svgRef(subIcon, 22)}</div>
+        <div>
+          <div class="who">
+            <b>${escapeHTML(r.requester_name || '?')}</b>
+            <span style="margin-left:6px;color:var(--muted-2)">信用 ${r.requester_trust ?? '–'}</span>
+            <span class="chip" style="margin-left:6px">${CAT_LABEL[r.category]}</span>
+          </div>
+          <div class="title">${escapeHTML(r.label_ja || r.subkind)}</div>
+          ${r.description ? `<div class="desc">${escapeHTML(r.description)}</div>` : ''}
+          <div class="meta">${distanceLine}</div>
+          <span class="badge-status ${statusKey}">${statusLabel}</span>
         </div>
-        <div class="title">${escapeHTML(KIND_LABEL[r.kind] || r.kind)}</div>
-        ${r.description ? `<div class="desc">${escapeHTML(r.description)}</div>` : ''}
-        <div class="meta">${distanceLine}</div>
-        <span class="badge-status ${statusKey}">${statusLabel}</span>
+        <div class="price">${r.bounty_yen}</div>
       </div>
-      <div class="price">${r.bounty_yen}</div>
+      ${replyBlock}
       ${actions ? `<div class="actions">${actions}</div>` : ''}
     </div>`;
 }
 
-/* =====================================================================
- * post
- * ===================================================================== */
-function renderPostKindGrid() {
-  const grid = $('#kind-grid');
-  if (grid.children.length) return;  // build once
-  grid.innerHTML = KIND_ORDER.map(k =>
-    `<button class="kind-chip ${k === state.postKind ? 'active' : ''}" data-kind="${k}">
-       ${svgRef(KIND_ICON[k], 26)}
-       <span class="lbl">${KIND_LABEL[k]}</span>
-     </button>`
-  ).join('');
-  grid.onclick = (ev) => {
-    const chip = ev.target.closest('.kind-chip');
-    if (!chip) return;
-    state.postKind = chip.dataset.kind;
-    [...grid.children].forEach(c => c.classList.toggle('active', c === chip));
-    $('#desc-required').style.display = state.postKind === 'other' ? 'inline' : 'none';
-  };
-  $('#bounty-pills').onclick = (ev) => {
-    const p = ev.target.closest('.pill');
-    if (!p) return;
-    state.postBounty = +p.dataset.yen;
-    [...$('#bounty-pills').children].forEach(c => c.classList.toggle('active', c === p));
-  };
-  $('#duration-pills').onclick = (ev) => {
-    const p = ev.target.closest('.pill');
-    if (!p) return;
-    state.postDuration = +p.dataset.min;
-    [...$('#duration-pills').children].forEach(c => c.classList.toggle('active', c === p));
-  };
+// ----------------------------------------------------------------- post
+function resetPost() {
+  state.postCategory = null;
+  state.postSubkind = null;
+  state.postBounty = 100;
+  state.postDuration = 15;
+  $('#post-desc').value = '';
+  $$('#bounty-pills .pill').forEach(p => p.classList.toggle('active', +p.dataset.yen === 100));
+  $$('#duration-pills .pill').forEach(p => p.classList.toggle('active', +p.dataset.min === 15));
 }
 
+function pickCategory(cat) {
+  state.postCategory = cat;
+  // Default subkind = first one in display order.
+  const subs = state.kindMeta.filter(m => m.category === cat);
+  state.postSubkind = subs[0]?.subkind || null;
+  state.postDuration = subs[0]?.default_minutes || 15;
+  state.postBounty = subs[0]?.default_bounty || 100;
+  renderSubList();
+  $$('#duration-pills .pill').forEach(p => p.classList.toggle('active', +p.dataset.min === state.postDuration));
+  $$('#bounty-pills .pill').forEach(p => p.classList.toggle('active', +p.dataset.yen === state.postBounty));
+  // Adjust location card help for scout.
+  if (cat === 'scout') {
+    $('#post-location-help').textContent = '現地に「いる」近所の人に届きます。あなたは現地に居なくてOK。';
+  } else {
+    $('#post-location-help').textContent = '通知は同じエリアの登録ユーザーに届きます。';
+  }
+  goView('post-details');
+}
+
+function renderSubList() {
+  const subs = state.kindMeta.filter(m => m.category === state.postCategory);
+  const root = $('#sub-list');
+  root.style.setProperty('--cat',
+    state.postCategory === 'spot_keep' ? 'var(--cat-spot)' :
+    state.postCategory === 'photo' ? 'var(--cat-photo)' :
+    'var(--cat-scout)'
+  );
+  root.innerHTML = subs.map(s => `
+    <button class="sub-item ${s.subkind === state.postSubkind ? 'active' : ''}" data-subkind="${s.subkind}">
+      <span class="ic">${svgRef('sub-' + s.subkind, 18)}</span>
+      <div>
+        <h4>${escapeHTML(s.label_ja)}</h4>
+        <p>${escapeHTML(s.description || '')}</p>
+      </div>
+    </button>
+  `).join('');
+  root.onclick = (ev) => {
+    const it = ev.target.closest('.sub-item');
+    if (!it) return;
+    state.postSubkind = it.dataset.subkind;
+    [...root.children].forEach(c => c.classList.toggle('active', c === it));
+    const meta = subs.find(s => s.subkind === state.postSubkind);
+    if (meta) {
+      state.postDuration = meta.default_minutes;
+      state.postBounty   = meta.default_bounty;
+      $$('#duration-pills .pill').forEach(p => p.classList.toggle('active', +p.dataset.min === state.postDuration));
+      $$('#bounty-pills .pill').forEach(p => p.classList.toggle('active', +p.dataset.yen === state.postBounty));
+    }
+  };
+}
+$('#bounty-pills').onclick = (ev) => {
+  const p = ev.target.closest('.pill');
+  if (!p) return;
+  state.postBounty = +p.dataset.yen;
+  $$('#bounty-pills .pill').forEach(c => c.classList.toggle('active', c === p));
+};
+$('#duration-pills').onclick = (ev) => {
+  const p = ev.target.closest('.pill');
+  if (!p) return;
+  state.postDuration = +p.dataset.min;
+  $$('#duration-pills .pill').forEach(c => c.classList.toggle('active', c === p));
+};
+
 async function submitRequest() {
-  if (!state.location) {
-    toast('現在地が必要です', 'err');
-    return;
-  }
-  const desc = $('#post-desc').value.trim();
-  if (state.postKind === 'other' && !desc) {
-    toast('「その他」は説明が必要です', 'err');
-    return;
-  }
+  if (!state.location)    return toast('現在地が必要', 'err');
+  if (!state.postCategory) return toast('カテゴリを選んで', 'err');
+  if (!state.postSubkind)  return toast('種類を選んで', 'err');
   const btn = $('#post-btn');
   btn.disabled = true;
   btn.innerHTML = svgRef('i-spinner', 16) + ' 送信中…';
   const { data, error } = await supa.rpc('post_request', {
-    kind: state.postKind,
-    bounty_yen: state.postBounty,
-    lat: state.location.lat,
-    lng: state.location.lng,
-    description: desc || null,
-    location_label: null,
-    duration_minutes: state.postDuration,
+    p_category: state.postCategory,
+    p_subkind: state.postSubkind,
+    p_bounty_yen: state.postBounty,
+    p_lat: state.location.lat,
+    p_lng: state.location.lng,
+    p_description: $('#post-desc').value.trim() || null,
+    p_target_label: null,
+    p_duration_minutes: state.postDuration,
   });
   btn.disabled = false;
-  btn.innerHTML = svgRef('i-check', 16) + ' 困りごとを投稿する';
-  if (error) {
-    toast('投稿失敗: ' + error.message, 'err');
-    return;
-  }
+  btn.innerHTML = svgRef('i-check', 16) + ' 投稿する';
+  if (error) return toast('投稿失敗: ' + error.message, 'err');
   toast('投稿しました', 'ok');
-  $('#post-desc').value = '';
+  resetPost();
   goView('inbox');
   refreshInbox();
 }
 
-/* =====================================================================
- * inbox
- * ===================================================================== */
+// ----------------------------------------------------------------- inbox
 $('#inbox-tabs').addEventListener('click', (ev) => {
   const btn = ev.target.closest('button[data-tab]');
   if (!btn) return;
@@ -1319,25 +1335,29 @@ async function refreshInbox() {
   if (!state.session) return;
   const me = state.profile.id;
   const [mine, helping] = await Promise.all([
-    supa.from('requests').select('*').eq('requester_id', me).order('created_at', { ascending: false }).limit(50),
-    supa.from('requests').select('*').eq('accepter_id', me).order('accepted_at', { ascending: false }).limit(50),
+    supa.from('requests').select('*, kind_meta!inner(label_ja, needs_helper_reply)').eq('requester_id', me).order('created_at', { ascending: false }).limit(50),
+    supa.from('requests').select('*, kind_meta!inner(label_ja, needs_helper_reply)').eq('accepter_id', me).order('accepted_at', { ascending: false }).limit(50),
   ]);
-  if (mine.error) toast('取得失敗: ' + mine.error.message, 'err');
+  if (mine.error)    toast('取得失敗: ' + mine.error.message, 'err');
   if (helping.error) toast('取得失敗: ' + helping.error.message, 'err');
 
-  // Decorate with requester info (display_name + trust) for "helping" rows
-  // so the same card template works. For "mine" we just use self info.
-  state.inboxMine = (mine.data || []).map(r => ({
+  const decorate = (rows, requesterFallback) => (rows || []).map(r => ({
     ...r,
-    requester_name: state.profile.display_name,
-    requester_trust: state.profile.trust_score,
+    label_ja: r.kind_meta?.label_ja || r.subkind,
+    needs_helper_reply: r.kind_meta?.needs_helper_reply || false,
+    requester_name: requesterFallback?.display_name,
+    requester_trust: requesterFallback?.trust_score,
   }));
+
+  state.inboxMine = decorate(mine.data, state.profile);
   if (helping.data && helping.data.length) {
     const ids = [...new Set(helping.data.map(r => r.requester_id))];
     const { data: profs } = await supa.from('profiles').select('id,display_name,trust_score').in('id', ids);
     const byId = Object.fromEntries((profs || []).map(p => [p.id, p]));
     state.inboxHelping = helping.data.map(r => ({
       ...r,
+      label_ja: r.kind_meta?.label_ja || r.subkind,
+      needs_helper_reply: r.kind_meta?.needs_helper_reply || false,
       requester_name: byId[r.requester_id]?.display_name || '?',
       requester_trust: byId[r.requester_id]?.trust_score,
     }));
@@ -1345,14 +1365,12 @@ async function refreshInbox() {
     state.inboxHelping = [];
   }
 
-  // Badge count = items that need my action
   const pendingMine = state.inboxMine.filter(r => r.status === 'confirmed_by_helper').length;
   const pendingHelp = state.inboxHelping.filter(r => r.status === 'accepted').length;
   const total = pendingMine + pendingHelp;
   const badge = $('#inbox-badge');
   badge.hidden = total === 0;
   badge.textContent = total;
-
   renderInbox();
 }
 
@@ -1370,35 +1388,59 @@ function renderInbox() {
   list.innerHTML = rows.map(r => requestCard(r, state.inboxTab === 'mine' ? 'mine' : 'helping')).join('');
 }
 
-/* =====================================================================
- * request actions
- * ===================================================================== */
+// ----------------------------------------------------------------- request actions
 async function acceptRequest(id) {
   const { error } = await supa.rpc('accept_request', { p_request_id: id });
   if (error) return toast(error.message, 'err');
   toast('引き受けました', 'ok');
-  refreshFeed();
-  refreshInbox();
+  await refreshFeed(); await refreshInbox();
+  goView('inbox');
 }
 async function cancelRequest(id) {
   if (!confirm('取り下げますか?')) return;
   const { error } = await supa.rpc('cancel_request', { p_request_id: id, p_reason: null });
   if (error) return toast(error.message, 'err');
   toast('取り下げました', 'ok');
-  refreshFeed();
-  refreshInbox();
+  await refreshFeed(); await refreshInbox();
 }
-async function confirmHelper(id) {
-  const { error } = await supa.rpc('confirm_helper', { p_request_id: id });
+function openConfirmHelper(id, needReply) {
+  if (!needReply) {
+    return confirmHelperWithReply(id, null);
+  }
+  // Bottom-sheet style modal for the helper to type the reply.
+  const bg = document.createElement('div');
+  bg.className = 'modal-bg';
+  bg.onclick = (ev) => { if (ev.target === bg) bg.remove(); };
+  bg.innerHTML = `
+    <div class="modal" onclick="event.stopPropagation()">
+      <h3>完了報告の内容</h3>
+      <p class="help">現地の様子を一言で。依頼者の知りたい粒度を意識して。</p>
+      <textarea id="hr-text" maxlength="280" placeholder="例: 行列15分くらい、4列で店内まで巻いてる。"></textarea>
+      <div style="display:flex;gap:6px;margin-top:10px">
+        <button class="btn ghost" onclick="this.closest('.modal-bg').remove()">キャンセル</button>
+        <button class="btn good" style="flex:1" id="hr-submit">${svgRef('i-check', 16)} 送る</button>
+      </div>
+    </div>`;
+  document.body.appendChild(bg);
+  bg.querySelector('#hr-submit').onclick = async () => {
+    const txt = bg.querySelector('#hr-text').value.trim();
+    if (!txt) return toast('内容を入れて', 'err');
+    bg.remove();
+    confirmHelperWithReply(id, txt);
+  };
+  bg.querySelector('#hr-text').focus();
+}
+async function confirmHelperWithReply(id, reply) {
+  const { error } = await supa.rpc('confirm_helper', { p_request_id: id, p_helper_reply: reply });
   if (error) return toast(error.message, 'err');
   toast('完了報告を送りました', 'ok');
-  refreshInbox();
+  await refreshInbox();
 }
 async function confirmRequester(id) {
   const { error } = await supa.rpc('confirm_requester', { p_request_id: id });
   if (error) return toast(error.message, 'err');
   toast('取引完了 — 相手の信用が +1', 'ok');
-  refreshInbox();
+  await refreshInbox();
 }
 async function disputeRequest(id) {
   const reason = prompt('不一致の理由を入力 (相手にも見えます):');
@@ -1406,25 +1448,19 @@ async function disputeRequest(id) {
   const { error } = await supa.rpc('dispute_request', { p_request_id: id, p_reason: reason });
   if (error) return toast(error.message, 'err');
   toast('通報しました', 'ok');
-  refreshInbox();
+  await refreshInbox();
 }
 
-/* =====================================================================
- * profile
- * ===================================================================== */
+// ----------------------------------------------------------------- profile
 function renderProfile() {
   if (!state.profile) return;
   $('#prof-name').value = state.profile.display_name || '';
   $('#prof-trust').textContent = state.profile.trust_score ?? 100;
-  // Count completed transactions where I'm a party.
   supa.from('transactions')
       .select('*', { count: 'exact', head: true })
       .or(`payer_id.eq.${state.profile.id},payee_id.eq.${state.profile.id}`)
-      .then(({ count }) => {
-        $('#prof-completed').innerHTML = `${count || 0}<small>件</small>`;
-      });
+      .then(({ count }) => { $('#prof-completed').innerHTML = `${count || 0}<small>件</small>`; });
 }
-
 async function saveProfile() {
   const name = $('#prof-name').value.trim();
   if (!name) return toast('表示名を入れて', 'err');
@@ -1438,29 +1474,17 @@ async function saveProfile() {
   toast('保存しました', 'ok');
 }
 
-/* =====================================================================
- * boot
- * ===================================================================== */
+// ----------------------------------------------------------------- boot
 async function boot() {
-  // PWA service worker.
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
-  // Initial session.
   const { data: { session } } = await supa.auth.getSession();
   await onAuthStateChange(session);
-  // Reactive auth.
-  supa.auth.onAuthStateChange((_event, session) => {
-    onAuthStateChange(session);
-  });
-  // Poll feed + inbox every 15s while a session is open and the tab is
-  // visible. A future iteration would swap this for Supabase Realtime
-  // (postgres_changes channel) so updates arrive instantly.
+  supa.auth.onAuthStateChange((_event, session) => { onAuthStateChange(session); });
   setInterval(() => {
-    if (document.hidden) return;
-    if (!state.session) return;
-    refreshFeed();
-    refreshInbox();
+    if (document.hidden || !state.session) return;
+    refreshFeed(); refreshInbox();
   }, 15000);
 }
 boot();
